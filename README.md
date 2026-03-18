@@ -1,4 +1,3 @@
-✅ GitHub Project Description (README Intro)
 🧠 AI-Based Early Warning & Intervention System for Mental Health Crisis
 
 This project presents an Artificial Intelligence and Machine Learning based web application designed to detect early signs of mental health distress such as depression, anxiety, emotional burnout, and suicidal tendencies using multimodal behavioral and textual analysis.
