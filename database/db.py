@@ -126,8 +126,8 @@ def create_user(name: str, email: str, password: str) -> Optional[Dict]:
     joined    = datetime.utcnow().isoformat()
 
     conn.execute(
-        "INSERT INTO users VALUES (?,?,?,?,?,?)",
-        (user_id, name, email.lower().strip(), pass_hash, salt, joined)
+        "INSERT INTO users (id, name, email, pass_hash, pass_salt, joined_at, phone) VALUES (?,?,?,?,?,?,?)",
+        (user_id, name, email.lower().strip(), pass_hash, salt, joined, None)
     )
     conn.commit()
     conn.close()
