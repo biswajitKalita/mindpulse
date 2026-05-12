@@ -1,0 +1,135 @@
+MindPulse — Backend Update Guide After Improved Models
+=======================================================
+
+STEP 1 — Run improved training scripts
+---------------------------------------
+cd C:/Users/ashik/OneDrive/Desktop/mindpulse_backend
+
+# Train improved text model (~15-20 min)
+python mindpulse/Notebooks/8_improved_text_model.py
+
+# Train improved voice model (~60-90 min)
+python mindpulse/Notebooks/9_improved_voice_model.py
+
+
+STEP 2 — Update text model predict() in backend
+-------------------------------------------------
+The new text model uses THREE feature sets: word TF-IDF + char TF-IDF + hand features.
+Update your backend predict function like this:
+
+--- OLD CODE (in main.py or analyzer.py) ---
+vec = joblib.load("mindpulse/Models/final_vectorizer.pkl")
+model = joblib.load("mindpulse/Models/final_model.pkl")
+
+def predict(text):
+    X = vec.transform([clean(text)])
+    return model.predict(X)[0], model.predict_proba(X)[0]
+
+--- NEW CODE ---
+import re, numpy as np, joblib
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from scipy.sparse import hstack, csr_matrix
+
+word_vec   = joblib.load("mindpulse/Models/final_vectorizer.pkl")
+char_vec   = joblib.load("mindpulse/Models/char_vectorizer.pkl")
+text_model = joblib.load("mindpulse/Models/final_model.pkl")
+vader      = SentimentIntensityAnalyzer()
+
+CRISIS_KW = [
+    "want to die","kill myself","end my life","suicide","suicidal",
+    "self harm","self-harm","no reason to live","cant go on",
+]
+
+def extract_hand_features(text):
+    t = str(text)
+    words = t.split()
+    vs = vader.polarity_scores(t)
+    return np.array([[
+        vs["compound"], vs["pos"], vs["neg"], vs["neu"],
+        min(len(words)/50.0, 1.0),
+        min(np.mean([len(w) for w in words]) / 10.0 if words else 0, 1.0),
+        min(sum(1 for kw in CRISIS_KW if kw in t.lower()) / 3.0, 1.0),
+        0.0,  # placeholder for moderate keywords
+        min(len(re.findall(r"[!?]", t)) / 5.0, 1.0),
+        min(sum(1 for w in words if w.isupper() and len(w)>1) / 5.0, 1.0),
+        int(any(kw in t.lower() for kw in CRISIS_KW)),
+    ]], dtype=np.float32)
+
+def predict_text(text):
+    cleaned = clean(text)   # use your existing clean() function
+    X_word  = word_vec.transform([cleaned])
+    X_char  = char_vec.transform([cleaned])
+    X_hand  = csr_matrix(extract_hand_features(text))
+    X       = hstack([X_word, X_char, X_hand])
+    pred    = text_model.predict(X)[0]
+    proba   = text_model.predict_proba(X)[0]
+    return pred, proba
+
+
+STEP 3 — Update voice model predict() in backend
+-------------------------------------------------
+The new voice model uses multi-feature input (Mel + MFCC + Contrast + Chroma).
+Update your voice prediction function:
+
+--- OLD CODE (voice_predictor.py or similar) ---
+def predict_voice(audio_bytes):
+    # loads mel spectrogram only
+    mel = extract_mel(audio_path)
+    tensor = torch.FloatTensor(mel).unsqueeze(0).unsqueeze(0)
+    out = model(tensor)
+    ...
+
+--- NEW CODE ---
+def extract_all_features(y, sr=22050, n_mels=64, n_mfcc=40,
+                          hop=512, n_fft=2048, fixed_len=173):
+    import librosa, numpy as np
+    target = sr * 4
+    y = np.pad(y, (0, max(0, target - len(y))))[:target]
+
+    def pad(arr):
+        if arr.shape[1] < fixed_len:
+            return np.pad(arr, ((0,0),(0, fixed_len - arr.shape[1])))
+        return arr[:, :fixed_len]
+
+    mel      = librosa.power_to_db(
+                 librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft,
+                                                hop_length=hop, n_mels=n_mels, fmax=8000),
+                 ref=np.max).astype(np.float32)
+    mfcc     = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, hop_length=hop).astype(np.float32)
+    d_mfcc   = librosa.feature.delta(mfcc)
+    dd_mfcc  = librosa.feature.delta(mfcc, order=2)
+    contrast = librosa.feature.spectral_contrast(y=y, sr=sr, hop_length=hop).astype(np.float32)
+    chroma   = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop).astype(np.float32)
+
+    combined = np.vstack([pad(mel), pad(mfcc), pad(d_mfcc), pad(dd_mfcc),
+                          pad(contrast), pad(chroma)])  # (203, T)
+    return combined
+
+
+STEP 4 — Restart the backend
+------------------------------
+python -m uvicorn main:app --reload --port 8000
+
+
+EXPECTED ACCURACY AFTER IMPROVEMENTS
+======================================
+Model              | Before  | After (expected)
+---------------------------------------------------
+Text model         | 82-85%  | 88-93%
+Voice emotion CNN  | 85-92%  | 88-94%
+Combined (frontend)| N/A     | Higher accuracy via both
+
+KEY IMPROVEMENTS SUMMARY
+==========================
+Text Model:
+  - Ensemble (LR + SVM + SGD + Stacking) vs single LR
+  - Word TF-IDF (1-3g) + Char TF-IDF (2-5g) + VADER + hand features
+  - Contraction expansion + negation handling
+  - Better VADER thresholds for re-labelling
+
+Voice Model:
+  - CNN-BiLSTM + Self-Attention vs plain CNN
+  - Multi-feature: Mel + MFCC(+delta+delta2) + Spectral Contrast + Chroma
+  - Mixup augmentation + SpecAugment + time roll + amplitude jitter
+  - Test-Time Augmentation (TTA, 5 passes)
+  - Cosine annealing LR with warm restarts
