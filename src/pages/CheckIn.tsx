@@ -731,17 +731,23 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
       });
 
       // Voice emotion score blending: 60% text model + 40% voice model
+      // Backend returns: calm, joy, sadness, anger, anxiety, neutral
       const VOICE_SCORE_MAP: Record<string, number> = {
+        // UI emotion names
         happy: 10, excited: 8, calm: 6, content: 6, motivated: 8, hopeful: 7, surprised: 2,
         neutral: 0,
         sad: -8, anxious: -10, angry: -10, fear: -12, disgust: -7,
         frustrated: -8, depressed: -14, exhausted: -6,
+        // Backend voice model names (must match voice_analyzer.py VOICE_EMOTION_RISK_OFFSET)
+        joy: 10, sadness: -8, anger: -10, anxiety: -14,
       };
       let finalScore = entry.riskScore;
       if (voiceEmotion) {
-        const adj = (VOICE_SCORE_MAP[voiceEmotion.emotion.toLowerCase()] ?? 0) * voiceEmotion.confidence;
+        const emo = voiceEmotion.emotion.toLowerCase();
+        const adj = (VOICE_SCORE_MAP[emo] ?? 0) * voiceEmotion.confidence;
         const voiceScore = Math.max(0, Math.min(100, entry.riskScore + adj));
         finalScore = Math.round(entry.riskScore * 0.6 + voiceScore * 0.4);
+        console.log(`[Voice Blend] ${emo} adj=${adj.toFixed(1)} text=${entry.riskScore} final=${finalScore}`);
       }
 
       // Convert entry to AnalysisResult shape for Step 4 display
