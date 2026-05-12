@@ -36,16 +36,23 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        # Local development
         "http://localhost:5173", "http://127.0.0.1:5173",
         "http://localhost:5174", "http://127.0.0.1:5174",
         "http://localhost:5175", "http://127.0.0.1:5175",
         "http://localhost:5176", "http://127.0.0.1:5176",
         "http://localhost:3000", "http://127.0.0.1:3000",
+        # Production — Vercel frontend
+        "https://mindpulseee.vercel.app",
+        "https://mindpulseeeeee.vercel.app",
+        # Allow all vercel preview deployments
+        "https://mindpulse-tn0d.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ── Routes ─────────────────────────────────────
 app.include_router(auth_router,     prefix="/api")   # /api/auth/...
