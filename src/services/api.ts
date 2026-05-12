@@ -130,34 +130,57 @@ export interface DashboardSummary {
 export async function apiSignup(name: string, email: string, password: string): Promise<AuthResponse> {
   if (USE_MOCK) return mockSignup(name, email, password);
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQ_TIMEOUT);
     const res = await fetch(`${AUTH_BASE}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
+      signal: controller.signal,
     });
-    const body = await res.json();
-    if (!res.ok) return { success: false, error: body?.detail ?? 'Signup failed.' };
-    if (body.token) setToken(body.token);
-    return { success: true, user: body.user, token: body.token };
+    clearTimeout(timer);
+    const body = await res.json().catch(() => null);
+    if (res.status === 409) return { success: false, error: body?.detail ?? 'An account with this email already exists.' };
+    if (!res.ok) {
+      // 5xx = backend crashed → use localStorage mock so user can still sign up
+      console.warn('[MindPulse] Backend signup failed, using local fallback');
+      return mockSignup(name, email, password);
+    }
+    if (body?.token) setToken(body.token);
+    return { success: true, user: body?.user, token: body?.token };
   } catch {
-    return mockSignup(name, email, password);  // offline fallback
+    return mockSignup(name, email, password);  // network error / timeout
   }
 }
 
 export async function apiLogin(email: string, password: string): Promise<AuthResponse> {
   if (USE_MOCK) return mockLogin(email, password);
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQ_TIMEOUT);
     const res = await fetch(`${AUTH_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+      signal: controller.signal,
     });
-    const body = await res.json();
-    if (!res.ok) return { success: false, error: body?.detail ?? 'Login failed.' };
-    if (body.token) setToken(body.token);
-    return { success: true, user: body.user, token: body.token };
+    clearTimeout(timer);
+    const body = await res.json().catch(() => null);
+    if (res.status === 401) {
+      // Wrong password on real backend → also try localStorage mock (covers Render DB wipe)
+      const mockRes = await mockLogin(email, password);
+      if (mockRes.success) return mockRes;
+      return { success: false, error: body?.detail ?? 'Incorrect email or password.' };
+    }
+    if (!res.ok) {
+      // 5xx = backend crashed → try localStorage mock
+      console.warn('[MindPulse] Backend login failed, trying local fallback');
+      return mockLogin(email, password);
+    }
+    if (body?.token) setToken(body.token);
+    return { success: true, user: body?.user, token: body?.token };
   } catch {
-    return mockLogin(email, password);  // offline fallback
+    return mockLogin(email, password);  // network error / timeout
   }
 }
 
@@ -207,15 +230,25 @@ export async function apiVerifyOtp(phone: string, otp: string, name?: string): P
 export async function apiGetCurrentUser(): Promise<ApiUser | null> {
   if (USE_MOCK) return mockGetCurrentUser();
   const token = getToken();
-  if (!token) return null;
+  if (!token) return mockGetCurrentUser();  // check localStorage session
+  // Mock tokens (from offline signup) — don't hit backend
+  if (token.startsWith('mock_')) return mockGetCurrentUser();
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQ_TIMEOUT);
     const res = await fetch(`${AUTH_BASE}/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` },
+      signal: controller.signal,
     });
-    if (!res.ok) { clearToken(); return null; }
+    clearTimeout(timer);
+    if (!res.ok) {
+      clearToken();
+      // Try localStorage session as fallback
+      return mockGetCurrentUser();
+    }
     return res.json() as Promise<ApiUser>;
   } catch {
-    return mockGetCurrentUser();  // offline fallback
+    return mockGetCurrentUser();  // offline / timeout → restore from localStorage
   }
 }
 
@@ -255,7 +288,13 @@ export async function apiSubmitCheckIn(data: CheckInPayload): Promise<ApiCheckIn
 
 export async function apiGetCheckIns(): Promise<ApiCheckInEntry[]> {
   if (USE_MOCK) return mockGetCheckIns();
-  return request<ApiCheckInEntry[]>('/checkins');
+  try {
+    return await request<ApiCheckInEntry[]>('/checkins');
+  } catch (err: any) {
+    // 401 / timeout / network error → return localStorage entries so Dashboard shows data
+    console.warn('[MindPulse] GET /checkins failed, using local entries');
+    return mockGetCheckIns();
+  }
 }
 
 export async function apiGetCheckInsByDate(from: string, to: string): Promise<ApiCheckInEntry[]> {
