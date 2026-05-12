@@ -4,10 +4,13 @@
 */
 
 // ── Config ──
-// Dev: use local backend. Prod (Vercel): use Render backend.
+// Priority: VITE_API_BASE_URL → VITE_API_URL → localhost (dev) → Render (prod)
+// NOTE: Using || not ?? so empty strings also fall back to the hardcoded Render URL
 const PROD_URL  = 'https://mindpulse-tn0d.onrender.com';
-const _BASE     = (import.meta.env.VITE_API_BASE_URL
-  ?? (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL)
+const _BASE     = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL      ||
+  (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL)
 ).replace(/\/$/, '');
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
