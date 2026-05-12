@@ -5,13 +5,20 @@
 
 // ── Config ──
 // Dev: use local backend. Prod (Vercel): use Render backend.
-const PROD_URL   = 'https://mindpulse-tn0d.onrender.com';
-const _BASE      = (import.meta.env.VITE_API_BASE_URL
+const PROD_URL  = 'https://mindpulse-tn0d.onrender.com';
+const _BASE     = (import.meta.env.VITE_API_BASE_URL
   ?? (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL)
 ).replace(/\/$/, '');
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
 const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
+// Request timeout: 8s in production (Render cold-start can take 30s+, we fallback fast)
+const REQ_TIMEOUT = import.meta.env.DEV ? 15000 : 8000;
+
+// ── Wake up Render on production page load ──
+if (!import.meta.env.DEV) {
+  fetch(`${PROD_URL}/api/health`, { method: 'GET' }).catch(() => {});
+}
 
 // ── Token helpers ──
 function getToken(): string | null {
@@ -28,7 +35,7 @@ export class ApiError extends Error {
   }
 }
 
-// ── Generic request ──
+// ── Generic request with timeout ──
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
   const token = getToken();
@@ -36,13 +43,22 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...opts.headers as Record<string, string> };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...opts, headers });
-  const body = await res.json().catch(() => null);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQ_TIMEOUT);
 
-  if (!res.ok) {
-    throw new ApiError(res.status, body?.error ?? body?.message ?? 'Request failed', body);
+  try {
+    const res = await fetch(url, { ...opts, headers, signal: controller.signal });
+    clearTimeout(timer);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new ApiError(res.status, body?.error ?? body?.detail ?? body?.message ?? 'Request failed', body);
+    }
+    return body as T;
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err?.name === 'AbortError') throw new ApiError(0, 'Request timed out — backend may be waking up');
+    throw err;
   }
-  return body as T;
 }
 
 // ── Types ──
