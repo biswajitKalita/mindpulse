@@ -333,7 +333,7 @@ This project is licensed under the [MIT License](LICENSE) - see the `LICENSE` fi
 
 ## 📞 Support & Contact
 
--   📧 Email: [biswajitkalita2002@gmail.com] <!-- TODO: Confirm best contact email for biswajitKalita -->
+-   📧 Email: [biswajitkalita@gmail.com] <!-- TODO: Confirm best contact email for biswajitKalita -->
 -   🐛 Issues: [GitHub Issues](https://github.com/biswajitKalita/mindpulse/issues)
 
 ---
