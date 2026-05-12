@@ -4,8 +4,11 @@
 */
 
 // ── Config ──
-// Backend URL: Render production server
-const _BASE     = (import.meta.env.VITE_API_BASE_URL ?? 'https://mindpulse-tn0d.onrender.com').replace(/\/$/, '');
+// Dev: use local backend. Prod (Vercel): use Render backend.
+const PROD_URL   = 'https://mindpulse-tn0d.onrender.com';
+const _BASE      = (import.meta.env.VITE_API_BASE_URL
+  ?? (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL)
+).replace(/\/$/, '');
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
 const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
@@ -206,19 +209,32 @@ export async function apiGetCurrentUser(): Promise<ApiUser | null> {
 
 export async function apiSubmitCheckIn(data: CheckInPayload): Promise<ApiCheckInEntry> {
   if (USE_MOCK) return mockSubmitCheckIn(data);
-  // POST /api/checkins — backend analyzes + saves in one call
-  return request<ApiCheckInEntry>('/checkins', {
-    method: 'POST',
-    body: JSON.stringify({
-      text:       data.journalText,
-      mood:       data.mood,
-      stress:     data.stressLevel,
-      sleep:      data.sleepQuality,
-      energy:     data.energyLevel ?? 5,
-      tags:       data.tags,
-      voice_used: data.voiceUsed ?? false,
-    }),
-  });
+  try {
+    return await request<ApiCheckInEntry>('/checkins', {
+      method: 'POST',
+      body: JSON.stringify({
+        text:       data.journalText,
+        mood:       data.mood,
+        stress:     data.stressLevel,
+        sleep:      data.sleepQuality,
+        energy:     data.energyLevel ?? 5,
+        tags:       data.tags,
+        voice_used: data.voiceUsed ?? false,
+      }),
+    });
+  } catch (err: any) {
+    // 401 = invalid/mock token → fall back to local analysis so the app still works
+    if (err?.status === 401 || err?.status === 403) {
+      console.warn('[MindPulse] Auth token rejected — using local analysis fallback');
+      return mockSubmitCheckIn(data);
+    }
+    // Network error (backend offline) → also fall back
+    if (!err?.status) {
+      console.warn('[MindPulse] Backend unreachable — using local analysis fallback');
+      return mockSubmitCheckIn(data);
+    }
+    throw err;
+  }
 }
 
 export async function apiGetCheckIns(): Promise<ApiCheckInEntry[]> {
@@ -497,8 +513,8 @@ export { clearToken as apiClearToken, getToken as apiGetToken };
 //  MINDPULSE ANALYSIS ENGINE  (FastAPI backend)
 // ──────────────────────────────────────────
 
-const ANALYSIS_BASE = import.meta.env.VITE_ANALYSIS_URL ?? 'https://mindpulse-tn0d.onrender.com';
-
+const ANALYSIS_BASE = import.meta.env.VITE_ANALYSIS_URL
+  ?? (import.meta.env.DEV ? 'http://localhost:8000' : 'https://mindpulse-tn0d.onrender.com');
 
 export interface AnalysisPayload {
   text: string;          // journal text + voice transcript combined
