@@ -25,17 +25,16 @@ env/
 *.sqlite
 *.sqlite3
 
-# ML model files (large binary files)
+# ML model files — large binary files
+# NOTE: small model files (<90MB) ARE committed for Render deployment
+# Only exclude the huge ones that exceed GitHub's 100MB limit
 *.h5
-*.pkl
 *.joblib
-*.pt
-*.pth
 *.onnx
 *.npy
 *.npz
-models/
-mindpulse/models/
+# Exclude only the 190MB goemotion model (too large for GitHub)
+mindpulse/Models/goemotion_model.pkl
 
 # Large training datasets & audio (too big for GitHub — use cloud storage)
 mindpulse/Data/
