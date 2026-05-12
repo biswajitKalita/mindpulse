@@ -4,9 +4,12 @@
 */
 
 // ── Config ──
-const API_BASE      = import.meta.env.VITE_API_URL  ?? 'http://localhost:5000/api';
-const AUTH_BASE     = import.meta.env.VITE_AUTH_URL ?? 'http://localhost:8000/api';
-const USE_MOCK      = import.meta.env.VITE_USE_MOCK === 'true';
+// In production: set VITE_API_BASE_URL to your Render backend URL
+// e.g. https://mindpulse-api.onrender.com
+const _BASE     = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE  = `${_BASE}/api`;
+const AUTH_BASE = `${_BASE}/api`;
+const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
 
 // ── Token helpers ──
 function getToken(): string | null {
