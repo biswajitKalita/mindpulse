@@ -4,18 +4,25 @@
 */
 
 // ── Config ──
-// Priority: VITE_API_BASE_URL → VITE_API_URL → localhost (dev) → Render (prod)
-// NOTE: Using || not ?? so empty strings also fall back to the hardcoded Render URL
-const PROD_URL  = 'https://mindpulse-tn0d.onrender.com';
-const _BASE     = (
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL      ||
-  (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL)
-).replace(/\/$/, '');
+// PROD_URL is always the real Render backend — env vars can OVERRIDE only if they are valid
+const PROD_URL = 'https://mindpulse-tn0d.onrender.com';
+
+// Validate env var: only accept if it's a real backend URL, not a placeholder
+const _userUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
+const _validUrl = _userUrl && (
+  _userUrl.includes('onrender.com') ||
+  _userUrl.includes('localhost')    ||
+  _userUrl.includes('127.0.0.1')   ||
+  _userUrl.includes('ngrok.io')    ||
+  _userUrl.includes('railway.app')
+);
+// If env var is empty, fake, or wrong → use the hardcoded real backend
+const _BASE = (_validUrl ? _userUrl : (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL))
+  .replace(/\/$/, '');
+
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
 const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
-// Request timeout: 8s in production (Render cold-start can take 30s+, we fallback fast)
 const REQ_TIMEOUT = import.meta.env.DEV ? 15000 : 8000;
 
 // ── Wake up Render on production page load ──
