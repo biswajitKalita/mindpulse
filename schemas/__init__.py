@@ -1,0 +1,1 @@
+# MindPulse schemas package

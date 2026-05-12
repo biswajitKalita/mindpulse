@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env_backup
+
+# Environment variables (NEVER commit — contains API keys & passwords)
+.env
+.env.local
+.env.production
+
+# Database files (SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# ML model files (large binary files)
+*.h5
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.npy
+*.npz
+models/
+mindpulse/models/
+
+# Large training datasets & audio (too big for GitHub — use cloud storage)
+mindpulse/Data/
+*.wav
+*.csv
+*.tsv
+*.mp3
+*.mp4
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Test / coverage
+.pytest_cache/
+htmlcov/
+.coverage
