@@ -4,9 +4,8 @@
 */
 
 // ── Config ──
-// In production: set VITE_API_BASE_URL to your Render backend URL
-// e.g. https://mindpulse-api.onrender.com
-const _BASE     = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+// Backend URL: Render production server
+const _BASE     = (import.meta.env.VITE_API_BASE_URL ?? 'https://mindpulse-tn0d.onrender.com').replace(/\/$/, '');
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
 const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
@@ -498,7 +497,8 @@ export { clearToken as apiClearToken, getToken as apiGetToken };
 //  MINDPULSE ANALYSIS ENGINE  (FastAPI backend)
 // ──────────────────────────────────────────
 
-const ANALYSIS_BASE = import.meta.env.VITE_ANALYSIS_URL ?? 'http://localhost:8000';
+const ANALYSIS_BASE = import.meta.env.VITE_ANALYSIS_URL ?? 'https://mindpulse-tn0d.onrender.com';
+
 
 export interface AnalysisPayload {
   text: string;          // journal text + voice transcript combined
