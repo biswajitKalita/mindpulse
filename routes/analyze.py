@@ -67,8 +67,10 @@ async def analyze_voice(audio: UploadFile = File(...)):
 
 @router.get("/health")
 async def health():
+    from models.analyzer import ML_ENABLED
     return {
         "status":      "ok",
-        "text_model":  "MindPulse Tri-Model Ensemble v2.0",
+        "text_model":  "MindPulse Tri-Model Ensemble v2.0 (ML)" if ML_ENABLED else "MindPulse Rule-Based v2.0 (fallback)",
         "voice_model": "voice_emotion_model.pkl" if VOICE_ML_ENABLED else "rule-based fallback",
+        "ml_enabled":  ML_ENABLED,
     }

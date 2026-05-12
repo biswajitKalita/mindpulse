@@ -529,109 +529,118 @@ class MindPulseAnalyzer:
         if ML_ENABLED and clean.strip():
             # Clean text strictly for vectorizers
             ml_text = re.sub(r"[^a-z\s]", "", str(text).lower())
-            
-            # 1. SUICIDE / CRISIS detector
-            # Require HIGH confidence (>0.75) to avoid false positives on
-            # normal distress language like "tired", "worried", "exam stress"
-            s_vec    = suicide_vectorizer.transform([ml_text])
-            s_proba  = suicide_model.predict_proba(s_vec)[0]
-            s_classes = list(suicide_model.classes_)
-            suicide_confidence = float(s_proba[s_classes.index('suicide')])
-            
-            # Only flag as crisis if ML is very confident AND word rules confirm
-            ml_crisis   = suicide_confidence >= 0.75
-            rule_crisis = self._check_crisis(clean)
-            crisis = (ml_crisis and rule_crisis) or (suicide_confidence >= 0.92)
-            
-            # 2. ISEAR EMOTION detector
-            i_vec = isear_vectorizer.transform([ml_text])
-            isear_pred    = isear_model.predict(i_vec)[0]
-            isear_proba   = isear_model.predict_proba(i_vec)[0]
-            isear_classes = list(isear_model.classes_)
-            isear_conf    = float(isear_proba[isear_classes.index(isear_pred)])
+            ml_success = False
+            try:
+                # 1. SUICIDE / CRISIS detector
+                s_vec    = suicide_vectorizer.transform([ml_text])
+                s_proba  = suicide_model.predict_proba(s_vec)[0]
+                s_classes = list(suicide_model.classes_)
+                # Safely find 'suicide' label regardless of exact class name
+                suicide_idx = next(
+                    (i for i, c in enumerate(s_classes) if 'suicid' in str(c).lower()), None
+                )
+                suicide_confidence = float(s_proba[suicide_idx]) if suicide_idx is not None else 0.0
 
-            # Full ISEAR 7-class → MindPulse UI label mapping
-            # ISEAR classes: anger, disgust, fear, guilt, joy, sadness, shame
-            emotion_mapping = {
-                "fear":    "anxiety",
-                "joy":     "joy",
-                "sadness": "sadness",
-                "anger":   "anger",
-                "disgust": "anger",    # closest UI match
-                "guilt":   "sadness",  # guilt → elevated sadness
-                "shame":   "sadness",  # shame → elevated sadness
-            }
-            dominant = emotion_mapping.get(isear_pred, "sadness")
+                # Only flag as crisis if ML is very confident AND word rules confirm
+                ml_crisis   = suicide_confidence >= 0.75
+                rule_crisis = self._check_crisis(clean)
+                crisis = (ml_crisis and rule_crisis) or (suicide_confidence >= 0.92)
 
-            # Boost the matching emotion bucket proportionally to the ISEAR confidence
-            if dominant in emotions:
-                emotions[dominant] = min(1.0, emotions[dominant] + isear_conf * 0.8)
-            else:
-                emotions[dominant] = isear_conf * 0.8
-                
-            # 3. FINAL MODEL RISK detector
-            f_vec = final_vectorizer.transform([ml_text])
-            probs        = final_model.predict_proba(f_vec)[0]
-            classes_list = list(final_model.classes_)
+                # 2. ISEAR EMOTION detector
+                i_vec = isear_vectorizer.transform([ml_text])
+                isear_pred    = isear_model.predict(i_vec)[0]
+                isear_proba   = isear_model.predict_proba(i_vec)[0]
+                isear_classes = list(isear_model.classes_)
+                isear_conf    = float(isear_proba[isear_classes.index(isear_pred)])
 
-            p_high     = probs[classes_list.index("high")]
-            p_low      = probs[classes_list.index("low")]
-            p_moderate = probs[classes_list.index("moderate")]
+                # Full ISEAR 7-class → MindPulse UI label mapping
+                emotion_mapping = {
+                    "fear":    "anxiety",
+                    "joy":     "joy",
+                    "sadness": "sadness",
+                    "anger":   "anger",
+                    "disgust": "anger",
+                    "guilt":   "sadness",
+                    "shame":   "sadness",
+                }
+                dominant = emotion_mapping.get(str(isear_pred).lower(), "sadness")
 
-            # ── HYBRID SCORE  ───────────────────────────────────────────────
-            # The final_model is biased — emotional/positive words in mental-health
-            # training datasets were often labeled "high" risk.
-            # Strategy: gate on VADER to override ML when text is clearly positive.
-
-            vader_compound = self.vader.polarity_scores(text)["compound"]  # -1.0 to +1.0
-
-            # Base ML score: p_low → high wellness, p_high → low wellness
-            ml_score = (p_low * 85) + (p_moderate * 50) + (p_high * 12)
-
-            # Smart gating:
-            # If VADER strongly detects POSITIVE sentiment (>0.5), the text is
-            # genuinely happy — override the biased ML score entirely.
-            if vader_compound >= 0.5:
-                # Positive gate: text is genuinely happy — trust VADER over biased ML
-                vader_wellness = 65 + (vader_compound * 33)  # ~82–98 for strongly positive
-                score = round(vader_wellness * 0.7 + ml_score * 0.3)
-
-            elif vader_compound <= -0.4:
-                # Negative gate: ML model dominates for clearly distressed text
-                # Raised VADER baseline to 58 so mild stress stays in MEDIUM (≥45)
-                score = round(ml_score * 0.6 + (58 + vader_compound * 22) * 0.4)
-
-            else:
-                # Neutral zone: blend with upward-biased baseline (55-65 range)
-                vader_wellness = 58 + vader_compound * 18
-                score = round(ml_score * 0.50 + vader_wellness * 0.50)
-
-            # ISEAR emotion fine-tune (small adjustment, ±8)
-            isear_correction = 0
-            if dominant == "joy":
-                isear_correction = +8
-            elif dominant in ("anxiety", "sadness"):
-                isear_correction = -8
-            elif dominant == "anger":
-                isear_correction = -5
-
-            score = round(score + isear_correction)
-            score = max(5, min(98, score))
-
-            if crisis:
-                score = min(score, 20)
-                risk  = "critical"
-            else:
-                # Derive risk from final blended score
-                if score >= 70:
-                    risk = "low"
-                elif score >= 45:
-                    risk = "moderate"
+                # Boost the matching emotion bucket proportionally to the ISEAR confidence
+                if dominant in emotions:
+                    emotions[dominant] = min(1.0, emotions[dominant] + isear_conf * 0.8)
                 else:
-                    risk = "high"
-                
+                    emotions[dominant] = isear_conf * 0.8
+
+                # 3. FINAL MODEL RISK detector
+                f_vec = final_vectorizer.transform([ml_text])
+                probs        = final_model.predict_proba(f_vec)[0]
+                classes_list = list(final_model.classes_)
+
+                # Safely find class indices by partial match (handles label variations)
+                def _idx(cl, name):
+                    for i, c in enumerate(cl):
+                        if str(c).lower() == name.lower():
+                            return i
+                    return None
+
+                hi_idx  = _idx(classes_list, "high")
+                lo_idx  = _idx(classes_list, "low")
+                mo_idx  = _idx(classes_list, "moderate")
+                if hi_idx is None or lo_idx is None or mo_idx is None:
+                    raise ValueError(f"Unexpected final_model classes: {classes_list}")
+
+                p_high     = probs[hi_idx]
+                p_low      = probs[lo_idx]
+                p_moderate = probs[mo_idx]
+
+                # HYBRID SCORE
+                vader_compound = self.vader.polarity_scores(text)["compound"]
+                ml_score = (p_low * 85) + (p_moderate * 50) + (p_high * 12)
+
+                if vader_compound >= 0.5:
+                    vader_wellness = 65 + (vader_compound * 33)
+                    score = round(vader_wellness * 0.7 + ml_score * 0.3)
+                elif vader_compound <= -0.4:
+                    score = round(ml_score * 0.6 + (58 + vader_compound * 22) * 0.4)
+                else:
+                    vader_wellness = 58 + vader_compound * 18
+                    score = round(ml_score * 0.50 + vader_wellness * 0.50)
+
+                # ISEAR emotion fine-tune (±8)
+                isear_correction = 0
+                if dominant == "joy":                        isear_correction = +8
+                elif dominant in ("anxiety", "sadness"):    isear_correction = -8
+                elif dominant == "anger":                    isear_correction = -5
+
+                score = round(score + isear_correction)
+                score = max(5, min(98, score))
+
+                if crisis:
+                    score = min(score, 20)
+                    risk  = "critical"
+                else:
+                    if score >= 70:   risk = "low"
+                    elif score >= 45: risk = "moderate"
+                    else:             risk = "high"
+
+                sent_score = (score - 50) / 50.0
+                sent_label = "negative" if score < 40 else "positive" if score > 60 else "neutral"
+                ml_success = True
+
+            except Exception as ml_err:
+                print(f"[ML INFERENCE ERROR] {ml_err!r} — using rule-based fallback")
+                ml_success = False
+
+            if not ml_success:
+                # ML crashed mid-inference → fall back to rule-based
+                sent_score, sent_label = self._sentiment(clean)
+                crisis   = self._check_crisis(clean)
+                dominant = self._dominant(emotions)
+                score    = self._compute_score(sent_score, emotions, mood, stress, sleep, energy, tags, crisis, depth, clean)
+                risk     = self._risk_level(score, crisis)
+
         else:
-            # Complete Rule-based Fallback
+            # Complete Rule-based Fallback (ML disabled or empty text)
             sent_score, sent_label = self._sentiment(clean)
             crisis   = self._check_crisis(clean)
             dominant = self._dominant(emotions)
