@@ -1,0 +1,32 @@
+.magnetic-tilt {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  transform-style: preserve-3d;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Hover lift effect */
+.magnetic-tilt:hover {
+  transform: translateY(-15px) scale(1.02) !important;
+  border-color: #00E5FF !important;
+}
+
+.magnetic-glare {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.magnetic-tilt.hovered .magnetic-glare {
+  opacity: 1;
+}

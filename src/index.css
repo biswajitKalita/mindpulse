@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-deep:       #050508;
+  --bg-surface:    #0a0a12;
+  --bg-card:       rgba(255,255,255,0.03);
+  --border-glass:  rgba(255,255,255,0.06);
+  --accent-cyan:   #00E5FF;
+  --accent-silver: #8B949E;
+  --text-primary:  #FFFFFF;
+  --text-secondary:#8B949E;
+  --text-dim:      #3d444d;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--bg-deep) !important;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* ════════════════════════════════
+   PREMIUM: Dark + White Light Theme
+   Mouse spotlight handled by canvas
+   ════════════════════════════════ */
+
+/* Very subtle white ambient glow — top center */
+body::before {
+  content: '';
+  position: fixed;
+  top: -30%;
+  left: 20%;
+  width: 60vw;
+  height: 60vw;
+  max-width: 700px;
+  max-height: 700px;
+  background: radial-gradient(
+    circle,
+    rgba(200, 220, 255, 0.07) 0%,
+    rgba(180, 200, 255, 0.03) 50%,
+    transparent 75%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(40px);
+  animation: ambientPulse 8s ease-in-out infinite;
+}
+
+/* Very subtle white glow — bottom right */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  right: -10%;
+  width: 50vw;
+  height: 50vw;
+  max-width: 600px;
+  max-height: 600px;
+  background: radial-gradient(
+    circle,
+    rgba(180, 200, 255, 0.05) 0%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(60px);
+  animation: ambientPulse 12s ease-in-out infinite reverse;
+}
+
+@keyframes ambientPulse {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.08); }
+}
+
+/* Ensure all content sits above background */
+#root { position: relative; z-index: 1; }
+
+/* Grid background — subtle on top of aurora */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  position: relative;
+}
+
+/* Watermark hider */
+a[href*='spline.design'],
+canvas + a {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Spline container visibility */
+.spline-container {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure hero content is above aurora */
+.hero-split,
+.hero-text-content,
+.btn-group,
+.spline-container,
+.spline-container iframe {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Base dark for html/body */
+html, body, #root, .app-container {
+  background-color: #050508 !important;
+}

@@ -1,0 +1,142 @@
+.checkin-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh;
+  padding: 40px 20px;
+}
+
+.checkin-container {
+  width: 100%;
+  max-width: 800px;
+  background: rgba(15, 17, 21, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 50px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.checkin-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+/* The Text Area Magic */
+.textarea-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.journal-input {
+  width: 100%;
+  min-height: 250px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+/* Glow effect when the user clicks inside to type */
+.journal-input:focus {
+  border-color: rgba(0, 229, 255, 0.5);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+}
+
+.journal-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Footer layout */
+.checkin-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.word-count {
+  color: #555c63;
+  font-size: 0.9rem;
+  font-family: monospace;
+}
+
+/* The AI Button */
+.analyze-btn {
+  padding: 16px 32px;
+  background: linear-gradient(90deg, #00E5FF, #00E5FF);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 10px 20px rgba(111, 44, 255, 0.3);
+  font-family: 'Sora', sans-serif;
+}
+
+.analyze-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(0, 255, 242, 0.4);
+}
+
+.analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #2a2e35;
+  box-shadow: none;
+}
+
+/* Loading Animation State */
+.analyze-btn.analyzing {
+  background: #000;
+  border: 1px solid #00E5FF;
+  color: #00E5FF;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 255, 242, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(0, 255, 242, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 255, 242, 0); }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .checkin-container {
+    padding: 30px 20px;
+  }
+
+  .checkin-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .checkin-header p {
+    font-size: 0.95rem;
+  }
+
+  .journal-input {
+    min-height: 180px;
+    font-size: 1rem;
+    padding: 16px;
+  }
+
+  .checkin-footer {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .analyze-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
