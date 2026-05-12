@@ -29,9 +29,10 @@ export default function Landing({ onNavigate }: LandingProps) {
 
       {/* ══ FRAME 2 — Why MindPulse ══ */}
       <section style={{
-        height: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always',
+        minHeight: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '80px 24px 24px', boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
+        padding: 'clamp(80px,10vw,100px) clamp(16px,4vw,24px) clamp(24px,4vw,40px)',
+        boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
       }} className="grid-bg">
 
         {/* Background glow */}
@@ -53,8 +54,8 @@ export default function Landing({ onNavigate }: LandingProps) {
             </div>
           </ScrollReveal>
 
-          {/* Feature cards with unique colors + animated border */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          {/* Feature cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             {features.map(({ icon: Icon, title, desc, color, bg, border, delay }) => (
               <ScrollReveal key={title} delay={delay}>
                 <MagneticTilt>
@@ -102,9 +103,10 @@ export default function Landing({ onNavigate }: LandingProps) {
 
       {/* ══ FRAME 3 — How It Works ══ */}
       <section style={{
-        height: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always',
+        minHeight: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '80px 24px 24px', boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
+        padding: 'clamp(80px,10vw,100px) clamp(16px,4vw,24px) clamp(24px,4vw,40px)',
+        boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
       }} className="grid-bg">
 
         {/* Background glow */}
@@ -127,7 +129,7 @@ export default function Landing({ onNavigate }: LandingProps) {
             {/* Steps with connecting line */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 28, position: 'relative' }}>
               {/* Connector line — desktop only */}
-              <div style={{ position: 'absolute', top: 30, left: '15%', right: '15%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.3), rgba(124,58,237,0.3), rgba(52,211,153,0.3), transparent)', pointerEvents: 'none', zIndex: 0 }} />
+              <div className="hide-mobile" style={{ position: 'absolute', top: 30, left: '15%', right: '15%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.3), rgba(124,58,237,0.3), rgba(52,211,153,0.3), transparent)', pointerEvents: 'none', zIndex: 0 }} />
 
               {steps.map(({ n, title, desc, delay, color }) => (
                 <ScrollReveal key={n} delay={delay}>

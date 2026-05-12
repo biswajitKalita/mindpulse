@@ -480,5 +480,37 @@ html, body {
 .animate-spin { animation: spin 0.8s linear infinite; }
 
 /* ── Scroll reveal (used by ScrollReveal component) ── */
+/* ── Scroll reveal (used by ScrollReveal component) ── */
 .reveal-hidden { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
 .reveal-visible { opacity: 1; transform: translateY(0); }
+
+/* ════════════════════════════════════════
+   Mobile Responsive Improvements
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Shrink heavy background orbs on mobile — better perf + no overflow */
+  .orb-1 { width: 280px !important; height: 280px !important; top: -80px !important; left: -60px !important; }
+  .orb-2 { width: 240px !important; height: 240px !important; bottom: -60px !important; right: -60px !important; }
+  .orb-3 { display: none !important; }
+
+  /* Snap sections — allow content to breathe */
+  .snap-section {
+    padding-top: 80px;
+    padding-bottom: 32px;
+    justify-content: flex-start;
+  }
+
+  /* Page padding tighter on mobile */
+  .page-px {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Grid fallbacks */
+  .grid-2-1  { grid-template-columns: 1fr !important; }
+  .grid-4-cols { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Setting rows — allow wrap on small screens */
+  .setting-row { flex-wrap: wrap; gap: 8px; }
+}

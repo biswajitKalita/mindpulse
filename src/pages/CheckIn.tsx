@@ -646,7 +646,6 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
 
   const [step,         setStep]         = useState(1);
   const [animDir,      setAnimDir]      = useState<'in'|'out'>('in');
-  const [inputMode,    setInputMode]    = useState<'text'|'voice'>('text');
   const [journalText,  setJournalText]  = useState('');
   const [selectedMood, setSelectedMood] = useState('');
   const [stressLevel,  setStressLevel]  = useState(5);
@@ -659,15 +658,16 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
   const [hoveredMood,    setHoveredMood]    = useState('');
   const [animPhase,      setAnimPhase]      = useState(0); // for score ring animation
 
-  const [isAppendMode, setIsAppendMode] = useState(false); // Upgrade #3
+  const [isAppendMode, setIsAppendMode] = useState(false);
+  const [voiceContent, setVoiceContent] = useState('');   // ← separate from text input
   const [voiceEmotion, setVoiceEmotion] = useState<{ emotion: string; confidence: number } | null>(null);
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
 
   const { status, transcript, interimText, audioBlob, startListening, stopListening, resetTranscript, isSupported } = useSpeechRecognition();
 
-  // Auto-send audio to voice ML model when recording stops
+  // Always analyze voice audio when recording stops
   useEffect(() => {
-    if (!audioBlob || inputMode !== 'voice') return;
+    if (!audioBlob) return;
     let cancelled = false;
     setIsAnalyzingVoice(true);
     apiAnalyzeVoice(audioBlob)
@@ -676,33 +676,29 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
           setVoiceEmotion({ emotion: res.voice_emotion, confidence: res.voice_confidence });
         }
       })
-      .catch(() => { /* silently ignore */ })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setIsAnalyzingVoice(false); });
     return () => { cancelled = true; };
-  }, [audioBlob, inputMode]);
+  }, [audioBlob]);
 
-  // Upgrade #3: Append mode — when re-recording, append to existing text
-  // Upgrade #2: Auto-punctuate when recording stops
+  // Voice transcript → voiceContent (always, no mode check)
   useEffect(() => {
-    if (inputMode === 'voice' && transcript) {
-      if (isAppendMode) {
-        // Append new transcript to existing text
-        setJournalText(prev => {
-          const cleaned = autoPunctuate(prev);
-          const sep     = cleaned ? ' ' : '';
-          return cleaned + sep + transcript;
-        });
-      } else {
-        setJournalText(transcript);
-      }
+    if (!transcript) return;
+    if (isAppendMode) {
+      setVoiceContent(prev => {
+        const cleaned = autoPunctuate(prev);
+        return cleaned + (cleaned ? ' ' : '') + transcript;
+      });
+    } else {
+      setVoiceContent(transcript);
     }
-  }, [transcript, inputMode]);
+  }, [transcript]);
 
-  // Upgrade #2: Auto-punctuate when listening stops
+  // Auto-punctuate voiceContent when listening stops
   useEffect(() => {
-    if (status === 'idle' && journalText && inputMode === 'voice') {
-      setJournalText(prev => autoPunctuate(prev));
-      setIsAppendMode(true); // switch to append mode after first session
+    if (status === 'idle' && voiceContent) {
+      setVoiceContent(prev => autoPunctuate(prev));
+      setIsAppendMode(true);
     }
   }, [status]);
 
@@ -718,8 +714,12 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
     setSubmitError('');
     setIsSubmitting(true);
     try {
-      const combinedText = journalText.trim();
-      // Single backend call — analyzes ML + saves to DB in one shot
+      // Merge both inputs — text model gets combined content
+      const textPart  = journalText.trim();
+      const voicePart = voiceContent.trim();
+      const combinedText = [textPart, voicePart].filter(Boolean).join(' ');
+      const voiceUsed    = !!voicePart || !!audioBlob;
+
       const entry = await submitCheckIn({
         mood:        selectedMood,
         journalText: combinedText,
@@ -727,18 +727,32 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
         sleepQuality,
         energyLevel,
         tags:        selectedTags,
-        voiceUsed:   inputMode === 'voice',
+        voiceUsed,
       });
+
+      // Voice emotion score blending: 60% text model + 40% voice model
+      const VOICE_SCORE_MAP: Record<string, number> = {
+        happy: 10, excited: 8, calm: 6, content: 6, motivated: 8, hopeful: 7, surprised: 2,
+        neutral: 0,
+        sad: -8, anxious: -10, angry: -10, fear: -12, disgust: -7,
+        frustrated: -8, depressed: -14, exhausted: -6,
+      };
+      let finalScore = entry.riskScore;
+      if (voiceEmotion) {
+        const adj = (VOICE_SCORE_MAP[voiceEmotion.emotion.toLowerCase()] ?? 0) * voiceEmotion.confidence;
+        const voiceScore = Math.max(0, Math.min(100, entry.riskScore + adj));
+        finalScore = Math.round(entry.riskScore * 0.6 + voiceScore * 0.4);
+      }
 
       // Convert entry to AnalysisResult shape for Step 4 display
       const result: AnalysisResult = {
-        score:            entry.riskScore,
+        score:            finalScore,
         risk_level:       (entry.riskLevel ?? 'moderate') as any,
-        confidence:       0.9,
+        confidence:       voiceEmotion ? 0.95 : 0.90,
         emotions:         entry.emotionBreakdown ?? { anxiety:0, sadness:0, anger:0, joy:0, hope:0, exhaustion:0 },
         dominant_emotion: entry.dominantEmotion ?? 'neutral',
-        sentiment_label:  entry.riskScore >= 60 ? 'positive' : entry.riskScore >= 40 ? 'neutral' : 'negative',
-        sentiment_score:  (entry.riskScore - 50) / 50,
+        sentiment_label:  finalScore >= 60 ? 'positive' : finalScore >= 40 ? 'neutral' : 'negative',
+        sentiment_score:  (finalScore - 50) / 50,
         text_depth:       entry.wordCount && entry.wordCount > 40 ? 'deep' : entry.wordCount && entry.wordCount > 20 ? 'reflective' : 'moderate',
         insights:         entry.insights ?? '',
         suggestions:      entry.suggestions ?? [],
@@ -778,7 +792,7 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
   const prompts = MOOD_PROMPTS[selectedMood] ?? ["How's my energy?", "What's weighing on me?", "What made me smile?", "What challenged me?", "What am I grateful for?"];
 
   const canNext1 = !!selectedMood;
-  const canSubmit = !!journalText.trim();
+  const canSubmit = !!(journalText.trim() || voiceContent.trim());
 
   const stepAnim = {
     opacity  : animDir === 'in' ? 1 : 0,
@@ -946,135 +960,136 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
               </div>
             </div>
 
-            {/* Journal */}
+            {/* DUAL INPUT: Text + Voice - always visible */}
             <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: '20px 22px', marginBottom: 14 }}>
-              {/* Mode toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, position: 'relative', zIndex: 1 }}>
+
+              {/* Header with input status badges */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Share your thoughts</p>
-                <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3, border: '1px solid rgba(255,255,255,0.07)' }}>
-                  {[{mode:'text'as const,icon:<Type size={12}/>,label:'Text'},{mode:'voice'as const,icon:<Mic size={12}/>,label:'Voice'}].map(({mode,icon,label}) => (
-                    <button key={mode} type="button" onClick={() => { if (mode==='voice'&&status==='listening') stopListening(); setInputMode(mode); }} disabled={mode==='voice'&&!isSupported}
-                      style={{ display:'flex',alignItems:'center',gap:5,padding:'6px 12px',borderRadius:7,border:'none',cursor:mode==='voice'&&!isSupported?'not-allowed':'pointer',fontSize:12,fontWeight:600,transition:'all .2s',
-                        background:inputMode===mode?'rgba(0,229,255,0.14)':'transparent', color:inputMode===mode?'#00E5FF':'#64748b', opacity:mode==='voice'&&!isSupported?0.4:1 }}>
-                      {icon} {label}
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 99, transition: 'all .3s',
+                    color: journalText.trim() ? '#00E5FF' : '#374151',
+                    background: journalText.trim() ? 'rgba(0,229,255,0.1)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${journalText.trim() ? 'rgba(0,229,255,0.25)' : 'rgba(255,255,255,0.06)'}` }}>
+                    {'📝'} Text {journalText.trim() ? '✓' : ''}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 99, transition: 'all .3s',
+                    color: voiceContent.trim() ? '#a78bfa' : '#374151',
+                    background: voiceContent.trim() ? 'rgba(167,139,250,0.1)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${voiceContent.trim() ? 'rgba(167,139,250,0.3)' : 'rgba(255,255,255,0.06)'}` }}>
+                    {'🎙️'} Voice {voiceContent.trim() ? '✓' : ''}
+                  </span>
+                  {journalText.trim() && voiceContent.trim() && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)' }}>
+                      {'⚡'} Combined
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Section 1: Written Reflection */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Type size={11} style={{ color: '#00E5FF' }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#00E5FF', letterSpacing: '0.08em' }}>WRITTEN REFLECTION</span>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    value={journalText}
+                    onChange={e => setJournalText(e.target.value)}
+                    onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.max(100, el.scrollHeight) + 'px'; }}
+                    placeholder={
+                      selectedMood === 'struggling' ? "It's okay to be honest. What's going on?..."
+                      : selectedMood === 'excellent' ? "Tell me what's making today so great..."
+                      : selectedMood === 'low' ? "No judgment here. What's on your mind?..."
+                      : "Write freely… What's on your mind?"
+                    }
+                    className="input-dark"
+                    style={{ width: '100%', padding: '12px 12px 36px', borderRadius: 12, fontSize: 13, lineHeight: 1.8, resize: 'none', overflow: 'hidden', minHeight: 100, boxSizing: 'border-box', transition: 'border-color .3s',
+                      borderColor: journalText.length > 10 ? 'rgba(0,229,255,0.25)' : undefined }}
+                  />
+                  <div style={{ position: 'absolute', bottom: 8, left: 12, right: 12, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+                    {(() => {
+                      const words = journalText.trim().split(/\s+/).filter(Boolean).length;
+                      const col = words < 10 ? '#374151' : words < 20 ? '#fbbf24' : words < 40 ? '#34d399' : '#00E5FF';
+                      return (<>
+                        <div style={{ flex: 1, height: 2, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100,(words/40)*100)}%`, height: '100%', borderRadius: 99, background: col, transition: 'width .3s,background .3s' }} />
+                        </div>
+                        <span style={{ fontSize: 10, color: col, whiteSpace: 'nowrap' }}>{words}w</span>
+                      </>);
+                    })()}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                  {prompts.slice(0,4).map((p,i) => (
+                    <button key={i} type="button" onClick={() => setJournalText(t => t + (t ? ' ' : '') + p + ' ')}
+                      style={{ padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 500, cursor: 'pointer', transition: 'all .18s', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#64748b' }}
+                      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background='rgba(0,229,255,0.08)'; el.style.color='#00E5FF'; el.style.borderColor='rgba(0,229,255,0.2)'; }}
+                      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background='rgba(255,255,255,0.04)'; el.style.color='#64748b'; el.style.borderColor='rgba(255,255,255,0.07)'; }}>
+                      {p}
                     </button>
                   ))}
                 </div>
               </div>
-              {/* Diagnostic banner */}
-              {inputMode === 'voice' && !isSupported && (
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', marginBottom: 12 }}>
-                  <p style={{ color: '#f87171', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>⚠ï¸ Voice not supported in this browser</p>
-                  <p style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.6 }}>
-                    The Web Speech API requires <strong style={{ color: '#fff' }}>Google Chrome</strong> or <strong style={{ color: '#fff' }}>Microsoft Edge</strong>.<br/>
-                    Firefox, Safari and other browsers do not support it. Please switch browsers.
-                  </p>
-                </div>
-              )}
-              {inputMode === 'voice' && isSupported && (
-                <div style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(0,229,255,0.05)', position: 'relative', zIndex: 1, border: '1px solid rgba(0,229,255,0.1)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: status === 'listening' ? '#00E5FF' : status === 'error' ? '#f87171' : '#475569', boxShadow: status === 'listening' ? '0 0 8px #00E5FF' : 'none', flexShrink: 0 }} />
-                  <p style={{ color: '#64748b', fontSize: 12 }}>
-                    Status: <strong style={{ color: status === 'listening' ? '#00E5FF' : status === 'error' ? '#f87171' : '#94a3b8' }}>{status}</strong>
-                    {status === 'idle' && ' — Tap the orb to start'}
-                    {status === 'listening' && ' — Speak now, tap again to stop'}
-                    {status === 'error' && ' — Allow microphone permission in browser bar'}
-                  </p>
-                </div>
-              )}
 
-              {inputMode === 'text' && (
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0' }}>
+                <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg,transparent,rgba(167,139,250,0.25))' }} />
+                <span style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: '0.06em' }}>+ ADD VOICE NOTE</span>
+                <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg,rgba(167,139,250,0.25),transparent)' }} />
+              </div>
+
+              {/* Section 2: Voice Note */}
+              {isSupported ? (
                 <>
-                  {/* Upgrade 3: Auto-growing textarea */}
-                  <div style={{ position: 'relative' }}>
-                    <textarea
-                      value={journalText}
-                      onChange={e => setJournalText(e.target.value)}
-                      onInput={e => {
-                        const el = e.currentTarget;
-                        el.style.height = 'auto';
-                        el.style.height = Math.max(120, el.scrollHeight) + 'px';
-                      }}
-                      placeholder={
-                        selectedMood === 'struggling' ? "It's okay to be honest. What's going on?..."
-                        : selectedMood === 'excellent' ? "Tell me what's making today so great..."
-                        : selectedMood === 'low' ? "No judgment here. What's on your mind?..."
-                        : "Write freely… What's on your mind? How did today treat you?"
-                      }
-                      className="input-dark" required
-                      style={{ width: '100%', padding: '14px 14px 40px', borderRadius: 14, fontSize: 13, lineHeight: 1.8, resize: 'none', overflow: 'hidden', minHeight: 120, boxSizing: 'border-box', transition: 'border-color .3s',
-                        borderColor: journalText.length > 10 ? 'rgba(0,229,255,0.25)' : undefined }}
-                    />
-                    {/* Writing depth meter inside textarea bottom */}
-                    <div style={{ position: 'absolute', bottom: 10, left: 14, right: 14, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
-                      {(() => {
-                        const words = journalText.trim().split(/\s+/).filter(Boolean).length;
-                        const depth = words === 0 ? 'Start writing…' : words < 10 ? 'Keep going…' : words < 20 ? 'Getting there…' : words < 40 ? 'Good depth ✓' : 'Rich reflection ★';
-                        const pct   = Math.min(100, (words / 40) * 100);
-                        const col   = words < 10 ? '#475569' : words < 20 ? '#fbbf24' : words < 40 ? '#34d399' : '#00E5FF';
-                        return (
-                          <>
-                            <div style={{ flex: 1, height: 3, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: col, transition: 'width .3s, background .3s', boxShadow: `0 0 6px ${col}88` }} />
-                            </div>
-                            <span style={{ fontSize: 10.5, color: col, fontWeight: 600, whiteSpace: 'nowrap', transition: 'color .3s' }}>{depth}</span>
-                            <span style={{ fontSize: 10.5, color: '#374151', whiteSpace: 'nowrap' }}>{words}w</span>
-                          </>
-                        );
-                      })()}
-                    </div>
+                  <div style={{ padding: '7px 12px', borderRadius: 10, background: 'rgba(167,139,250,0.05)', border: `1px solid ${status==='listening'?'rgba(167,139,250,0.35)':'rgba(167,139,250,0.12)'}`, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, transition: 'border-color .3s' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, transition: 'all .3s', background: status==='listening'?'#a78bfa':status==='error'?'#f87171':'#374151', boxShadow: status==='listening'?'0 0 8px #a78bfa':'none' }} />
+                    <p style={{ color: '#64748b', fontSize: 12, flex: 1 }}>
+                      <strong style={{ color: status==='listening'?'#a78bfa':status==='error'?'#f87171':'#64748b' }}>{status}</strong>
+                      {status==='idle' && !voiceContent && ' — Tap mic orb to record'}
+                      {status==='listening' && ' — Speak now, tap orb to stop'}
+                      {isAnalyzingVoice && <span style={{ color:'#a78bfa', marginLeft:8 }}>{'·'} Analyzing voice{'…'}</span>}
+                      {voiceEmotion && !isAnalyzingVoice && (
+                        <span style={{ color:'#a78bfa', marginLeft:8 }}>{'·'} Voice: <strong>{voiceEmotion.emotion}</strong> ({Math.round(voiceEmotion.confidence*100)}%)</span>
+                      )}
+                    </p>
                   </div>
-
-                  {/* Mood-aware prompt chips */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 10, gap: 8 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
-                      {prompts.map((p, i) => (
-                        <button key={i} type="button"
-                          onClick={() => setJournalText(t => t + (t ? ' ' : '') + p + ' ')}
-                          style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 500, cursor: 'pointer', transition: 'all .18s',
-                            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#64748b' }}
-                          onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(0,229,255,0.08)'; el.style.color = '#00E5FF'; el.style.borderColor = 'rgba(0,229,255,0.25)'; }}
-                          onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(255,255,255,0.04)'; el.style.color = '#64748b'; el.style.borderColor = 'rgba(255,255,255,0.07)'; }}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  {(() => {
+                    const allVoiceText = voiceContent + ' ' + interimText;
+                    const liveEmotions = detectLiveEmotions(allVoiceText);
+                    const liveEmoColor = status==='listening' ? dominantOrbColor(liveEmotions) : null;
+                    return (
+                      <SiriOrb
+                        status={status}
+                        onToggle={() => status==='listening' ? stopListening() : startListening()}
+                        onAppend={() => { resetTranscript(); startListening(); }}
+                        isAppendMode={isAppendMode}
+                        journalText={voiceContent}
+                        interimText={interimText}
+                        onClear={() => { stopListening(); resetTranscript(); setVoiceContent(''); setIsAppendMode(false); setVoiceEmotion(null); }}
+                        voiceStatusLabel={voiceStatusLabel}
+                        emotionColor={liveEmoColor}
+                      />
+                    );
+                  })()}
                 </>
+              ) : (
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)' }}>
+                  <p style={{ color: '#f87171', fontSize: 12, fontWeight: 600 }}>{'⚠️'} Voice not supported — use Chrome or Edge</p>
+                </div>
               )}
 
-              {inputMode === 'voice' && (() => {
-                // Upgrade #1: compute live emotion color for orb
-                const allVoiceText    = journalText + ' ' + interimText;
-                const liveEmotions    = detectLiveEmotions(allVoiceText);
-                const liveEmoColor    = status === 'listening' ? dominantOrbColor(liveEmotions) : null;
-                return (
-                  <SiriOrb
-                    status={status}
-                    onToggle={() => status === 'listening' ? stopListening() : startListening()}
-                    onAppend={() => {
-                      // Upgrade #3: continue/append mode
-                      resetTranscript();
-                      startListening();
-                    }}
-                    isAppendMode={isAppendMode}
-                    journalText={journalText}
-                    interimText={interimText}
-                    onClear={() => {
-                      stopListening();
-                      resetTranscript();
-                      setJournalText('');
-                      setIsAppendMode(false); // reset append mode on clear
-                    }}
-                    voiceStatusLabel={voiceStatusLabel}
-                    emotionColor={liveEmoColor}
-                  />
-                );
-              })()}
+              {/* Combined analysis indicator */}
+              {journalText.trim() && voiceContent.trim() && (
+                <div style={{ marginTop: 12, padding: '9px 14px', borderRadius: 10, background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>{'⚡'}</span>
+                  <p style={{ fontSize: 12, color: '#34d399', lineHeight: 1.5 }}>
+                    <strong>Combined analysis active</strong> — Score from text model (60%) + voice emotion model (40%).
+                  </p>
+                </div>
+              )}
             </div>
-
-            {/* Privacy note */}
             <div style={{ borderRadius: 14, padding: '11px 16px', display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.12)', marginBottom: 14 }}>
               <Lock size={13} style={{ color: '#00E5FF', marginTop: 2, flexShrink: 0 }} />
               <p style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.6 }}>
@@ -1351,3 +1366,4 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
     </div>
   );
 }
+

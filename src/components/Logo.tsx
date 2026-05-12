@@ -51,7 +51,7 @@ export default function Logo({
           </filter>
         </defs>
 
-        {/* Brain outline — refined organic shape */}
+        {/* Brain outline */}
         <path
           d="M32 7
              C 24 7, 17 11, 13 17
@@ -74,13 +74,8 @@ export default function Logo({
           fill="none"
         />
 
-        {/* Brain crease / centre divider */}
-        <path
-          d="M32 10 C 32 20, 32 44, 32 58"
-          stroke="rgba(255,255,255,0.12)"
-          strokeWidth="1"
-          strokeLinecap="round"
-        />
+        {/* Brain crease */}
+        <path d="M32 10 C 32 20, 32 44, 32 58" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeLinecap="round" />
 
         {/* Left hemisphere folds */}
         <path d="M14 22 C 18 20, 22 24, 20 28" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2" strokeLinecap="round" fill="none" />
@@ -90,7 +85,7 @@ export default function Logo({
         <path d="M50 22 C 46 20, 42 24, 44 28" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2" strokeLinecap="round" fill="none" />
         <path d="M53 30 C 50 28, 46 32, 49 36" stroke="rgba(255,255,255,0.20)" strokeWidth="1.2" strokeLinecap="round" fill="none" />
 
-        {/* ECG / Pulse line — the signature element */}
+        {/* ECG / Pulse line */}
         <path
           d="M8 32 L18 32 L21 23 L28 44 L32 28 L36 36 L39 32 L56 32"
           stroke="url(#pulseGrad)"
