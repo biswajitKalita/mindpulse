@@ -32,24 +32,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── CORS: allow Vite frontend ──────────────────
+# ── CORS: allow Vite frontend + all Vercel preview deployments ─────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         # Local development
         "http://localhost:5173", "http://127.0.0.1:5173",
         "http://localhost:5174", "http://127.0.0.1:5174",
-        "http://localhost:5175", "http://127.0.0.1:5175",
-        "http://localhost:5176", "http://127.0.0.1:5176",
         "http://localhost:3000", "http://127.0.0.1:3000",
-        # Production — Vercel frontend
+        # Production — exact Vercel URL
         "https://mindpulseee.vercel.app",
-        "https://mindpulseeeeee.vercel.app",
-        # Allow all vercel preview deployments
+        # Render self-calls
         "https://mindpulse-tn0d.onrender.com",
     ],
+    # Matches ALL *.vercel.app preview URLs automatically
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
