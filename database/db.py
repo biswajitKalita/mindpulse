@@ -1,12 +1,31 @@
 """
 MindPulse — Database Layer
-Saves users, check-in entries + analysis results to SQLite.
+Saves users + check-in entries to MongoDB Atlas (persistent) or SQLite (local dev fallback).
 """
 
 import json, sqlite3, os, uuid, hashlib, hmac, secrets
 from datetime import datetime
 from typing import List, Optional, Dict
+from config.settings import MONGO_URI, DB_NAME
 
+# ── MongoDB (persistent — primary on Render) ────────────────────────────
+_mongo_users = None
+try:
+    if MONGO_URI:
+        from pymongo import MongoClient
+        _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        _db = _client[DB_NAME]
+        _mongo_users = _db["users"]
+        _mongo_users.create_index("email", unique=True, sparse=True)
+        _mongo_users.create_index("phone", unique=True, sparse=True)
+        print(f"[OK] MongoDB connected → {DB_NAME}.users")
+except Exception as e:
+    print(f"[WARN] MongoDB not available: {e} — using SQLite fallback")
+    _mongo_users = None
+
+MONGO_ENABLED = _mongo_users is not None
+
+# ── SQLite (local dev / fallback) ────────────────────────────────────────
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "mindpulse.db")
 
 
@@ -109,40 +128,57 @@ def _verify_password(password: str, salt: str, stored_hash: str) -> bool:
 def create_user(name: str, email: str, password: str) -> Optional[Dict]:
     """
     Create a new user. Returns the user dict or None if email already exists.
-    Password is hashed before storing — never stored in plain text.
+    Uses MongoDB (persistent) when available, SQLite otherwise.
     """
+    user_id   = str(uuid.uuid4())
+    salt      = _new_salt()
+    pass_hash = _hash_password(password, salt)
+    joined    = datetime.utcnow().isoformat()
+    email     = email.lower().strip()
+    av        = "".join(p[0].upper() for p in name.split()[:2])
+
+    if MONGO_ENABLED:
+        try:
+            doc = _mongo_users.find_one({"email": email})
+            if doc:
+                return None  # duplicate email
+            _mongo_users.insert_one({
+                "_id": user_id, "id": user_id, "name": name, "email": email,
+                "pass_hash": pass_hash, "pass_salt": salt,
+                "joined_at": joined, "phone": None,
+            })
+            return {"id": user_id, "name": name, "email": email,
+                    "avatarInitials": av, "joinedDate": joined}
+        except Exception as e:
+            print(f"[Mongo create_user error] {e} — falling back to SQLite")
+
+    # ── SQLite fallback ───────────────────────────────────────────
     conn = get_connection()
-    # Check for duplicate email
     exists = conn.execute(
         "SELECT id FROM users WHERE LOWER(email)=LOWER(?)", (email,)
     ).fetchone()
     if exists:
         conn.close()
-        return None   # caller should raise 409
-
-    user_id   = str(uuid.uuid4())
-    salt      = _new_salt()
-    pass_hash = _hash_password(password, salt)
-    joined    = datetime.utcnow().isoformat()
-
+        return None
     conn.execute(
         "INSERT INTO users (id, name, email, pass_hash, pass_salt, joined_at, phone) VALUES (?,?,?,?,?,?,?)",
-        (user_id, name, email.lower().strip(), pass_hash, salt, joined, None)
+        (user_id, name, email, pass_hash, salt, joined, None)
     )
     conn.commit()
     conn.close()
-
-    return {
-        "id":             user_id,
-        "name":           name,
-        "email":          email.lower().strip(),
-        "avatarInitials": "".join(p[0].upper() for p in name.split()[:2]),
-        "joinedDate":     joined,
-    }
+    return {"id": user_id, "name": name, "email": email,
+            "avatarInitials": av, "joinedDate": joined}
 
 
 def get_user_by_email(email: str) -> Optional[Dict]:
     """Return full user row (including hash+salt) by email."""
+    email = email.lower().strip()
+    if MONGO_ENABLED:
+        try:
+            doc = _mongo_users.find_one({"email": email})
+            return dict(doc) if doc else None
+        except Exception as e:
+            print(f"[Mongo get_user_by_email error] {e}")
     conn = get_connection()
     row = conn.execute(
         "SELECT * FROM users WHERE LOWER(email)=LOWER(?)", (email,)
@@ -153,6 +189,15 @@ def get_user_by_email(email: str) -> Optional[Dict]:
 
 def get_user_by_id(user_id: str) -> Optional[Dict]:
     """Return public user info by ID (no password fields)."""
+    if MONGO_ENABLED:
+        try:
+            doc = _mongo_users.find_one({"id": user_id})
+            if doc:
+                return {"id": doc["id"], "name": doc["name"], "email": doc.get("email", ""),
+                        "avatarInitials": "".join(p[0].upper() for p in doc["name"].split()[:2]),
+                        "joinedDate": doc["joined_at"]}
+        except Exception as e:
+            print(f"[Mongo get_user_by_id error] {e}")
     conn = get_connection()
     row = conn.execute(
         "SELECT id, name, email, joined_at FROM users WHERE id=?", (user_id,)
@@ -161,31 +206,23 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
     if not row:
         return None
     r = dict(row)
-    return {
-        "id":             r["id"],
-        "name":           r["name"],
-        "email":          r["email"],
-        "avatarInitials": "".join(p[0].upper() for p in r["name"].split()[:2]),
-        "joinedDate":     r["joined_at"],
-    }
+    return {"id": r["id"], "name": r["name"], "email": r["email"],
+            "avatarInitials": "".join(p[0].upper() for p in r["name"].split()[:2]),
+            "joinedDate": r["joined_at"]}
 
 
 def authenticate_user(email: str, password: str) -> Optional[Dict]:
-    """
-    Verify email + password. Returns public user dict on success, None on failure.
-    """
+    """Verify email + password. Returns public user dict on success, None on failure."""
     row = get_user_by_email(email)
     if not row:
         return None
-    if not _verify_password(password, row["pass_salt"], row["pass_hash"]):
+    salt = row.get("pass_salt") or row.get("salt") or ""
+    stored = row.get("pass_hash") or row.get("hash") or ""
+    if not _verify_password(password, salt, stored):
         return None
-    return {
-        "id":             row["id"],
-        "name":           row["name"],
-        "email":          row["email"],
-        "avatarInitials": "".join(p[0].upper() for p in row["name"].split()[:2]),
-        "joinedDate":     row["joined_at"],
-    }
+    return {"id": row["id"], "name": row["name"], "email": row["email"],
+            "avatarInitials": "".join(p[0].upper() for p in row["name"].split()[:2]),
+            "joinedDate": row.get("joined_at", "")}
 
 
 # ─────────────────────────────────────────────────
