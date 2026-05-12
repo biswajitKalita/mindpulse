@@ -282,19 +282,81 @@ export async function apiSubmitCheckIn(data: CheckInPayload): Promise<ApiCheckIn
       }),
     });
   } catch (err: any) {
-    // 401 = invalid/mock token → fall back to local analysis so the app still works
-    if (err?.status === 401 || err?.status === 403) {
-      console.warn('[MindPulse] Auth token rejected — using local analysis fallback');
-      return mockSubmitCheckIn(data);
-    }
-    // Network error (backend offline) → also fall back
-    if (!err?.status) {
-      console.warn('[MindPulse] Backend unreachable — using local analysis fallback');
-      return mockSubmitCheckIn(data);
+    // 401/403 = mock token rejected OR network error → use real ML via /api/analyze (no auth!)
+    const isAuthError = err?.status === 401 || err?.status === 403;
+    const isNetError  = !err?.status;
+    if (isAuthError || isNetError) {
+      console.warn('[MindPulse] Checkin auth failed — calling /api/analyze directly (no auth needed)');
+      return mlAnalyzeAndSaveLocally(data);
     }
     throw err;
   }
 }
+
+/**
+ * Calls POST /api/analyze (public — no auth token required).
+ * Used when the user has a mock token but we still want real ML scores.
+ * Saves the result to localStorage so Dashboard/History still populate.
+ */
+async function mlAnalyzeAndSaveLocally(data: CheckInPayload): Promise<ApiCheckInEntry> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQ_TIMEOUT);
+    const res = await fetch(`${API_BASE}/analyze`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text:   data.journalText,
+        mood:   data.mood,
+        stress: data.stressLevel,
+        sleep:  data.sleepQuality,
+        energy: data.energyLevel ?? 5,
+        tags:   data.tags,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error('analyze endpoint failed');
+    const ml = await res.json();
+
+    // Map ML emotions object → array of emotion label strings
+    const emoArr: string[] = Object.entries(ml.emotions || {})
+      .filter(([, v]) => (v as number) > 0.08)
+      .sort(([, a], [, b]) => (b as number) - (a as number))
+      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+
+    const entry: ApiCheckInEntry = {
+      id:               Math.random().toString(36).slice(2),
+      date:             new Date().toISOString(),
+      mood:             data.mood as any,
+      journalText:      data.journalText,
+      stressLevel:      data.stressLevel,
+      sleepQuality:     data.sleepQuality,
+      tags:             data.tags,
+      emotions:         emoArr.slice(0, 4),
+      riskScore:        ml.score,
+      dominantEmotion:  ml.dominant_emotion ?? emoArr[0]?.toLowerCase() ?? 'neutral',
+      emotionBreakdown: ml.emotions ?? {},
+      insights:         ml.insights ?? '',
+      suggestions:      ml.suggestions ?? [],
+      crisisFlag:       ml.crisis_flag ?? false,
+      wordCount:        ml.word_count ?? 0,
+      riskLevel:        ml.risk_level ?? (ml.score >= 70 ? 'low' : ml.score >= 45 ? 'moderate' : 'high'),
+    };
+
+    // Persist to localStorage so Dashboard/History show this entry
+    const stored = getEntries();
+    saveEntries([entry, ...stored]);
+    console.log(`[MindPulse] ML score via /api/analyze: ${ml.score} (${ml.risk_level})`);
+    return entry;
+  } catch (e) {
+    // /api/analyze also unreachable (truly offline) → simple keyword fallback
+    console.warn('[MindPulse] /api/analyze also failed — using offline keyword fallback');
+    return mockSubmitCheckIn(data);
+  }
+}
+
 
 export async function apiGetCheckIns(): Promise<ApiCheckInEntry[]> {
   if (USE_MOCK) return mockGetCheckIns();
