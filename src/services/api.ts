@@ -8,17 +8,18 @@
 const PROD_URL = 'https://mindpulse-tn0d.onrender.com';
 
 // Validate env var: only accept if it's a real backend URL, not a placeholder
-const _userUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
-const _validUrl = _userUrl && (
-  _userUrl.includes('onrender.com') ||
-  _userUrl.includes('localhost')    ||
-  _userUrl.includes('127.0.0.1')   ||
-  _userUrl.includes('ngrok.io')    ||
-  _userUrl.includes('railway.app')
+// Strip trailing /api if present (some .env files include it, we add /api ourselves)
+const _rawUrl  = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '').replace(/\/$/, '');
+const _validUrl = _rawUrl && (
+  _rawUrl.includes('onrender.com') ||
+  _rawUrl.includes('localhost')    ||
+  _rawUrl.includes('127.0.0.1')   ||
+  _rawUrl.includes('ngrok.io')    ||
+  _rawUrl.includes('railway.app')
 );
 // If env var is empty, fake, or wrong → use the hardcoded real backend
-const _BASE = (_validUrl ? _userUrl : (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL))
-  .replace(/\/$/, '');
+const _BASE = (_validUrl ? _rawUrl : (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL));
 
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
