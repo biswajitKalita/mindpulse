@@ -551,18 +551,6 @@ html, body {
   50%       { opacity: 0.2; transform: scale(0.7); }
 }
 
-/* ── Grid background (CheckIn, Dashboard) ── */
-.grid-bg {
-  background-color: #030712;
-  background-image:
-    radial-gradient(ellipse 60% 40% at 15% 10%,  rgba(0,229,255,0.055) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 35% at 85% 85%,  rgba(124,58,237,0.055) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 30% at 50% 50%,  rgba(0,100,255,0.025) 0%, transparent 70%),
-    linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
-  background-size: auto, auto, auto, 44px 44px, 44px 44px;
-}
-
 /* ── Dimension card stagger (Step 2 Vitals) ── */
 .dim-card {
   animation: dimCardIn 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
