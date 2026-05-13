@@ -109,7 +109,7 @@ def normalize_rough(r: str) -> str:
 print("=" * 62)
 print("  MindPulse — Final Text Model Retraining")
 print("=" * 62)
-print("\n[1/6] Loading datasets...")
+print("\n[1/6] Loading datasets…")
 
 # --- emotion.csv (numeric labels: 0=sadness, 1=joy, 2=love,
 #                                  3=anger, 4=fear, 5=surprise) ---
@@ -157,7 +157,7 @@ print("   Raw distribution:\n", data["risk"].value_counts().to_string())
 # =============================================================================
 # STEP 2 — VADER smart re-labelling (sample for speed on large datasets)
 # =============================================================================
-print("\n[2/6] Smart re-labelling with VADER...")
+print("\n[2/6] Smart re-labelling with VADER…")
 MAX_RELABEL = 150_000
 if len(data) > MAX_RELABEL:
     idx = data.sample(MAX_RELABEL, random_state=42).index
@@ -177,7 +177,7 @@ print("   Updated distribution:\n", data["risk"].value_counts().to_string())
 # =============================================================================
 # STEP 3 — Balance classes (cap to avoid extreme oversampling)
 # =============================================================================
-print("\n[3/6] Balancing classes...")
+print("\n[3/6] Balancing classes…")
 
 low_df  = data[data["risk"] == "low"]
 mod_df  = data[data["risk"] == "moderate"]
@@ -191,13 +191,13 @@ mod_df  = resample(mod_df,  replace=(len(mod_df)  < TARGET), n_samples=TARGET, r
 high_df = resample(high_df, replace=(len(high_df) < TARGET), n_samples=TARGET, random_state=42)
 
 balanced = pd.concat([low_df, mod_df, high_df]).sample(frac=1, random_state=42)
-print(f"   Each class -> {TARGET:,} samples ({len(balanced):,} total)")
+print(f"   Each class → {TARGET:,} samples ({len(balanced):,} total)")
 
 
 # =============================================================================
 # STEP 4 — Clean text + TF-IDF features
 # =============================================================================
-print("\n[4/6] Vectorising text...")
+print("\n[4/6] Vectorising text…")
 balanced["clean"] = balanced["text"].apply(clean)
 
 vectorizer = TfidfVectorizer(
@@ -219,7 +219,7 @@ print(f"   Train: {X_train.shape[0]:,}  |  Test: {X_test.shape[0]:,}")
 # =============================================================================
 # STEP 5 — Train Logistic Regression
 # =============================================================================
-print("\n[5/6] Training Logistic Regression...")
+print("\n[5/6] Training Logistic Regression…")
 
 model = LogisticRegression(
     C=2.0,
@@ -232,7 +232,7 @@ model = LogisticRegression(
 model.fit(X_train, y_train)
 
 acc = model.score(X_test, y_test)
-print(f"\n   [OK] Test Accuracy : {acc * 100:.1f}%")
+print(f"\n   ✓ Test Accuracy : {acc * 100:.1f}%")
 print("\n   Classification Report:")
 print(classification_report(y_test, model.predict(X_test)))
 print("\n   Confusion Matrix (low | moderate | high):")
@@ -242,9 +242,9 @@ print(confusion_matrix(y_test, model.predict(X_test), labels=["low", "moderate",
 # =============================================================================
 # STEP 6 — Save
 # =============================================================================
-print("\n[6/6] Saving models...")
+print("\n[6/6] Saving models…")
 joblib.dump(model,      f"{MODELS}/final_model.pkl")
 joblib.dump(vectorizer, f"{MODELS}/final_vectorizer.pkl")
 
-print("\n[DONE] final_model.pkl + final_vectorizer.pkl saved to", MODELS)
+print("\n✅  final_model.pkl + final_vectorizer.pkl saved to", MODELS)
 print("   Restart the backend: python -m uvicorn main:app --reload --port 8000")
