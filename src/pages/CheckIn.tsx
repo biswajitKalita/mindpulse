@@ -927,10 +927,11 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
     if (sleepChoice !== null) setSleepQuality(sleepChoice);
   }, [stressAnswers, energyAnswers, sleepChoice]);
 
-  const stepAnim = {
-    opacity  : animDir === 'in' ? 1 : 0,
-    transform: animDir === 'in' ? 'translateX(0) scale(1)' : 'translateX(30px) scale(0.98)',
-    transition: 'opacity .22s ease, transform .22s ease',
+  const stepAnim: React.CSSProperties = {
+    opacity   : animDir === 'in' ? 1 : 0,
+    transform : animDir === 'in' ? 'translateY(0) scale(1)'  : 'translateY(18px) scale(0.97)',
+    filter    : animDir === 'in' ? 'blur(0px)'               : 'blur(4px)',
+    transition: 'opacity .40s cubic-bezier(0.22,1,0.36,1), transform .40s cubic-bezier(0.22,1,0.36,1), filter .38s ease',
   };
 
   return (
@@ -1047,7 +1048,7 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
           <div style={stepAnim}>
 
             {/* ── STRESS ── */}
-            <div style={{ background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 12 }}>
+            <div className="dim-card dim-card-1" style={{ background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 12 }}>
               <DimHeader icon="🔥" label="Stress" accent="#f97316" answered={stressAnswers.filter(a=>a!==null).length} total={STRESS_QUESTIONS.length} />
               {STRESS_QUESTIONS.map((q, qi) => (
                 <div key={qi} style={{ marginBottom: qi < STRESS_QUESTIONS.length-1 ? 18 : 0 }}>
@@ -1064,7 +1065,7 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
             </div>
 
             {/* ── ENERGY ── */}
-            <div style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 12 }}>
+            <div className="dim-card dim-card-2" style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 12 }}>
               <DimHeader icon="⚡" label="Energy" accent="#a78bfa" answered={energyAnswers.filter(a=>a!==null).length} total={ENERGY_QUESTIONS.length} />
               {ENERGY_QUESTIONS.map((q, qi) => (
                 <div key={qi} style={{ marginBottom: qi < ENERGY_QUESTIONS.length-1 ? 18 : 0 }}>
@@ -1081,7 +1082,7 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
             </div>
 
             {/* ── SLEEP ── */}
-            <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 20 }}>
+            <div className="dim-card dim-card-3" style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 20 }}>
               <DimHeader icon="🌙" label="Sleep" accent="#00E5FF" answered={sleepChoice !== null ? 1 : 0} total={1} />
               <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 9, lineHeight: 1.55, fontWeight: 500 }}>How many hours did you sleep last night?</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
@@ -1119,7 +1120,8 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
         {step === 3 && (
           <div style={stepAnim}>
             {/* Trigger tags */}
-            <div style={{ background: 'rgba(4,8,20,0.35)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, position: 'relative', overflow: 'hidden', padding: '20px 22px', marginBottom: 14 }}>              <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>What's affecting you? <span style={{ fontWeight: 400, textTransform: 'none', color: '#374151' }}>(optional)</span></p>
+            <div style={{ background: 'rgba(4,8,20,0.35)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, position: 'relative', overflow: 'hidden', padding: '20px 22px', marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>What's affecting you? <span style={{ fontWeight: 400, textTransform: 'none', color: '#374151' }}>(optional)</span></p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {TAGS.map(t => {
                   const sel = selectedTags.includes(t);
