@@ -26,9 +26,124 @@ const STEPS = [
 ];
 
 /* ═══════════════════════════════════════
-   CIRCULAR ARC SLIDER — Apple Health style
-   270° draggable arc with dynamic color
+   MICRO-ASSESSMENT — Psychometric question sets
+   Replaces raw 0-10 sliders for Stress / Energy / Sleep
 ═══════════════════════════════════════ */
+
+const STRESS_QUESTIONS = [
+  {
+    text: 'How often did you feel mentally overloaded today?',
+    options: [
+      { label: 'Rarely / not at all', value: 1 },
+      { label: 'A few times',         value: 2 },
+      { label: 'Quite often',         value: 3 },
+      { label: 'Almost constantly',   value: 4 },
+    ],
+  },
+  {
+    text: 'How hard was it to quiet your thoughts when you needed to?',
+    options: [
+      { label: 'No trouble at all',  value: 1 },
+      { label: 'Slightly difficult', value: 2 },
+      { label: 'Quite difficult',    value: 3 },
+      { label: 'Couldn\'t switch off', value: 4 },
+    ],
+  },
+  {
+    text: 'How would you describe your sense of control over the day?',
+    options: [
+      { label: 'Fully in control',  value: 1 },
+      { label: 'Mostly in control', value: 2 },
+      { label: 'Somewhat lost it', value: 3 },
+      { label: 'Out of control',   value: 4 },
+    ],
+  },
+];
+
+const ENERGY_QUESTIONS = [
+  {
+    text: 'How was your physical energy through most of today?',
+    options: [
+      { label: 'High and sustained',  value: 4 },
+      { label: 'Moderate',            value: 3 },
+      { label: 'Low but manageable',  value: 2 },
+      { label: 'Very low / depleted', value: 1 },
+    ],
+  },
+  {
+    text: 'How hard was it to get started or stay focused on tasks?',
+    options: [
+      { label: 'Effortless',           value: 4 },
+      { label: 'Minor friction',       value: 3 },
+      { label: 'Noticeably hard',      value: 2 },
+      { label: 'Couldn\'t get started', value: 1 },
+    ],
+  },
+  {
+    text: 'Did you feel mentally sharp or foggy today?',
+    options: [
+      { label: 'Clear and sharp',    value: 4 },
+      { label: 'Mostly clear',       value: 3 },
+      { label: 'Somewhat foggy',     value: 2 },
+      { label: 'Very foggy / flat',  value: 1 },
+    ],
+  },
+];
+
+const SLEEP_OPTIONS = [
+  { label: 'Under 4 hrs', value: 2  },
+  { label: '4 – 5 hrs',   value: 4  },
+  { label: '6 hrs',       value: 6  },
+  { label: '7 hrs',       value: 8  },
+  { label: '8 + hrs',     value: 10 },
+];
+
+/** Map N stress answers (each 1–4, higher=more stressed) → 0-10 stressLevel */
+function aggregateStressAnswers(ans: (number|null)[]): number {
+  const n = ans.length;
+  const raw = ans.reduce((s, a) => s + (a ?? 1), 0);
+  return Math.min(10, Math.max(0, Math.round(((raw - n) / (n * 3)) * 10)));
+}
+
+/** Map N energy answers (each 1–4, higher=more energetic) → 0-10 energyLevel */
+function aggregateEnergyAnswers(ans: (number|null)[]): number {
+  const n = ans.length;
+  const raw = ans.reduce((s, a) => s + (a ?? 1), 0);
+  return Math.min(10, Math.max(0, Math.round(((raw - n) / (n * 3)) * 10)));
+}
+
+/* Pill button used in the micro-assessment */
+function PillOption({ label, selected, accent, onClick }: { label: string; selected: boolean; accent: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      padding: '9px 14px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+      cursor: 'pointer', transition: 'all .18s', textAlign: 'left', lineHeight: 1.35,
+      background : selected ? `${accent}18` : 'rgba(255,255,255,0.03)',
+      border     : `1.5px solid ${selected ? accent : 'rgba(255,255,255,0.07)'}`,
+      color      : selected ? accent : '#64748b',
+      boxShadow  : selected ? `0 0 14px ${accent}28` : 'none',
+      transform  : selected ? 'scale(1.02)' : 'scale(1)',
+    }}>{label}</button>
+  );
+}
+
+/* Small section header for each dimension */
+function DimHeader({ icon, label, accent, answered, total }: { icon: string; label: string; accent: string; answered: number; total: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+      <span style={{ fontSize: 17 }}>{icon}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: accent }}>{label}</span>
+      <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+        {Array.from({ length: total }).map((_, i) => (
+          <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', transition: 'background .2s',
+            background: i < answered ? accent : 'rgba(255,255,255,0.08)' }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 const SZ = 160;          // SVG viewport size
 const R  = 62;           // arc radius
 const SW = 13;           // stroke width
@@ -651,6 +766,10 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
   const [stressLevel,  setStressLevel]  = useState(5);
   const [sleepQuality, setSleepQuality] = useState(5);
   const [energyLevel,  setEnergyLevel]  = useState(5);
+  // Micro-assessment answers (null = unanswered)
+  const [stressAnswers, setStressAnswers] = useState<(number|null)[]>([null, null, null]);
+  const [energyAnswers, setEnergyAnswers] = useState<(number|null)[]>([null, null, null]);
+  const [sleepChoice,   setSleepChoice]   = useState<number|null>(null);
   const [selectedTags,   setSelectedTags]   = useState<string[]>([]);
   const [isSubmitting,   setIsSubmitting]   = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -798,7 +917,15 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
   const prompts = MOOD_PROMPTS[selectedMood] ?? ["How's my energy?", "What's weighing on me?", "What made me smile?", "What challenged me?", "What am I grateful for?"];
 
   const canNext1 = !!selectedMood;
+  const canNext2  = stressAnswers.every(a => a !== null) && energyAnswers.every(a => a !== null) && sleepChoice !== null;
   const canSubmit = !!(journalText.trim() || voiceContent.trim());
+
+  // Sync micro-assessment answers → numeric values used by backend
+  useEffect(() => {
+    if (stressAnswers.every(a => a !== null)) setStressLevel(aggregateStressAnswers(stressAnswers));
+    if (energyAnswers.every(a => a !== null)) setEnergyLevel(aggregateEnergyAnswers(energyAnswers));
+    if (sleepChoice !== null) setSleepQuality(sleepChoice);
+  }, [stressAnswers, energyAnswers, sleepChoice]);
 
   const stepAnim = {
     opacity  : animDir === 'in' ? 1 : 0,
@@ -817,10 +944,10 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
             <span style={{ color: '#00E5FF', fontSize: 12, fontWeight: 600 }}>Daily Check-In</span>
           </div>
           <h1 style={{ fontFamily: 'Sora,sans-serif', fontSize: 30, fontWeight: 800, color: '#fff', marginBottom: 6, letterSpacing: '-0.02em' }}>
-            {step === 1 ? 'How are you feeling?' : step === 2 ? 'Rate your vitals' : 'Share your thoughts'}
+            {step === 1 ? 'How are you feeling?' : step === 2 ? 'How\'s your mind and body?' : 'Share your thoughts'}
           </h1>
           <p style={{ color: '#64748b', fontSize: 13.5 }}>
-            {step === 1 ? 'Choose whatever feels most true right now' : step === 2 ? 'Honest ratings help your AI understand your patterns' : 'Write or speak freely — no judgment here'}
+            {step === 1 ? 'Choose whatever feels most true right now' : step === 2 ? 'Answer honestly — these insights shape your wellness score' : 'Write or speak freely — no judgment here'}
           </p>
         </div>
 
@@ -918,23 +1045,69 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
         ══════════════════════════════════ */}
         {step === 2 && (
           <div style={stepAnim}>
-            <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, padding: '32px 20px 24px', marginBottom: 24 }}>
-              <p style={{ textAlign: 'center', fontSize: 13, color: '#475569', marginBottom: 28 }}>Drag the ring or tap a dot to set your level</p>
-              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20 }}>
-                <CircularSlider value={stressLevel}  onChange={setStressLevel}  label="Stress"  icon="🔥" getColor={stressColor} />
-                <CircularSlider value={sleepQuality} onChange={setSleepQuality} label="Sleep"   icon="🌙" getColor={sleepColor}  />
-                <CircularSlider value={energyLevel}  onChange={setEnergyLevel}  label="Energy"  icon="⚡" getColor={energyColor} />
+
+            {/* ── STRESS ── */}
+            <div style={{ background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 12 }}>
+              <DimHeader icon="🔥" label="Stress" accent="#f97316" answered={stressAnswers.filter(a=>a!==null).length} total={STRESS_QUESTIONS.length} />
+              {STRESS_QUESTIONS.map((q, qi) => (
+                <div key={qi} style={{ marginBottom: qi < STRESS_QUESTIONS.length-1 ? 18 : 0 }}>
+                  <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 9, lineHeight: 1.55, fontWeight: 500 }}>{q.text}</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                    {q.options.map(opt => (
+                      <PillOption key={opt.value} label={opt.label} accent="#f97316"
+                        selected={stressAnswers[qi] === opt.value}
+                        onClick={() => setStressAnswers(prev => { const a=[...prev]; a[qi]=opt.value; return a; })} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── ENERGY ── */}
+            <div style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 12 }}>
+              <DimHeader icon="⚡" label="Energy" accent="#a78bfa" answered={energyAnswers.filter(a=>a!==null).length} total={ENERGY_QUESTIONS.length} />
+              {ENERGY_QUESTIONS.map((q, qi) => (
+                <div key={qi} style={{ marginBottom: qi < ENERGY_QUESTIONS.length-1 ? 18 : 0 }}>
+                  <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 9, lineHeight: 1.55, fontWeight: 500 }}>{q.text}</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                    {q.options.map(opt => (
+                      <PillOption key={opt.value} label={opt.label} accent="#a78bfa"
+                        selected={energyAnswers[qi] === opt.value}
+                        onClick={() => setEnergyAnswers(prev => { const a=[...prev]; a[qi]=opt.value; return a; })} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── SLEEP ── */}
+            <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.14)', borderRadius: 20, padding: '22px 20px', marginBottom: 20 }}>
+              <DimHeader icon="🌙" label="Sleep" accent="#00E5FF" answered={sleepChoice !== null ? 1 : 0} total={1} />
+              <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 9, lineHeight: 1.55, fontWeight: 500 }}>How many hours did you sleep last night?</p>
+              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                {SLEEP_OPTIONS.map(opt => (
+                  <PillOption key={opt.value} label={opt.label} accent="#00E5FF"
+                    selected={sleepChoice === opt.value}
+                    onClick={() => setSleepChoice(opt.value)} />
+                ))}
               </div>
             </div>
 
+            {/* ── Nav ── */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={() => goStep(1)}
                 style={{ flex: '0 0 auto', padding: '15px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#64748b', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, transition: 'all .2s' }}>
                 <ArrowLeft size={17} />
               </button>
-              <button type="button" onClick={() => goStep(3)}
-                style={{ flex: 1, padding: '15px 24px', borderRadius: 16, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all .25s', background: 'linear-gradient(135deg,#00E5FF,#00b4d8)', color: '#000', boxShadow: '0 0 24px rgba(0,229,255,0.3)' }}>
-                Continue <ArrowRight size={18} />
+              <button type="button" onClick={() => canNext2 && goStep(3)} disabled={!canNext2}
+                style={{ flex: 1, padding: '15px 24px', borderRadius: 16, border: 'none', fontSize: 15, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all .25s',
+                  background : canNext2 ? 'linear-gradient(135deg,#00E5FF,#00b4d8)' : 'rgba(255,255,255,0.06)',
+                  color      : canNext2 ? '#000' : '#374151',
+                  boxShadow  : canNext2 ? '0 0 24px rgba(0,229,255,0.3)' : 'none',
+                  opacity    : canNext2 ? 1 : 0.55,
+                  cursor     : canNext2 ? 'pointer' : 'not-allowed',
+                }}>
+                {canNext2 ? <><span>Continue</span><ArrowRight size={18}/></> : <span>Answer all questions to continue</span>}
               </button>
             </div>
           </div>
