@@ -4,11 +4,11 @@ MindPulse Analysis Model v2.0
 Hybrid NLP engine with advanced text understanding.
 
 Upgrade pipeline over v1:
-  1. Negation handling  — "not anxious" cancels anxiety detection
-  2. Intensity modifiers — "very", "extremely", "slightly" scale weights
-  3. Sentence-level analysis — per-sentence emotion aggregation
-  4. Improvement signals  — "getting better", "doing okay now" → boost score
-  5. Support network detection — mentions of friends/family → resilience boost
+  1. Negation handling  Ã¢ÂÂ "not anxious" cancels anxiety detection
+  2. Intensity modifiers Ã¢ÂÂ "very", "extremely", "slightly" scale weights
+  3. Sentence-level analysis Ã¢ÂÂ per-sentence emotion aggregation
+  4. Improvement signals  Ã¢ÂÂ "getting better", "doing okay now" Ã¢ÂÂ boost score
+  5. Support network detection Ã¢ÂÂ mentions of friends/family Ã¢ÂÂ resilience boost
   6. Balanced multi-factor scoring with confidence score
   7. Dynamic, personalized insight generation
   8. Expanded crisis detection (30 phrases)
@@ -41,9 +41,9 @@ except Exception as e:
     ML_ENABLED = False
 
 
-# ═══════════════════════════════════════════════════
-#  EMOTION LEXICONS  word → base weight (0.0 – 1.0)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+#  EMOTION LEXICONS  word Ã¢ÂÂ base weight (0.0 Ã¢ÂÂ 1.0)
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 EMOTION_LEXICONS: Dict[str, Dict[str, float]] = {
     "anxiety": {
         "anxious": 0.85, "anxiety": 0.90, "worried": 0.80, "worry": 0.75,
@@ -103,9 +103,9 @@ EMOTION_LEXICONS: Dict[str, Dict[str, float]] = {
     },
 }
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  NEGATION WORDS  (reverse emotion polarity)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 NEGATIONS = {
     "not", "no", "never", "neither", "nor", "don't", "doesn't", "didn't",
     "isn't", "aren't", "wasn't", "weren't", "won't", "wouldn't", "can't",
@@ -113,9 +113,9 @@ NEGATIONS = {
     "hardly", "scarcely", "without", "lack", "lacking", "nothing",
 }
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  INTENSITY MODIFIERS  (scale emotion weight up/down)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 INTENSIFIERS = {
     "very": 1.35, "extremely": 1.60, "incredibly": 1.55, "absolutely": 1.50,
     "totally": 1.40, "completely": 1.45, "terribly": 1.50, "so": 1.25,
@@ -127,9 +127,9 @@ DIMINISHERS = {
     "almost": 0.75, "little": 0.60, "mildly": 0.65,
 }
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  IMPROVEMENT SIGNALS  (things getting better)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 IMPROVEMENT_SIGNALS = [
     "getting better", "feeling better", "improving", "on the mend",
     "turning around", "things are looking up", "more hopeful",
@@ -138,18 +138,18 @@ IMPROVEMENT_SIGNALS = [
     "less stressed", "starting to feel", "beginning to feel",
 ]
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  SUPPORT NETWORK SIGNALS  (resilience boost)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 SUPPORT_SIGNALS = [
     "talked to", "spoke with", "reached out", "my friend", "my family",
     "my partner", "my therapist", "support", "therapy", "counseling",
     "someone helped", "helped me", "not alone", "together",
 ]
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  CRISIS KEYWORDS  (30 high-risk phrases)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 CRISIS_KEYWORDS = [
     "suicidal", "suicide", "kill myself", "want to die", "end my life",
     "self harm", "self-harm", "cutting myself", "hurt myself", "no reason to live",
@@ -160,9 +160,9 @@ CRISIS_KEYWORDS = [
     "disappear forever", "never wake up", "sleep forever", "can't do this anymore",
 ]
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  MOOD WEIGHTS  (selected by user in Step 1)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 MOOD_WEIGHTS = {
     "excellent": 22,
     "good":      14,
@@ -171,84 +171,120 @@ MOOD_WEIGHTS = {
     "struggling":-24,
 }
 
-# ═══════════════════════════════════════════════════
+
+# ===================================================================
 #  TAG RISK WEIGHTS
-# ═══════════════════════════════════════════════════
+# ===================================================================
 HIGH_RISK_TAGS   = {"Relationships": -4, "Finance": -3, "Health": -3, "Sleep": -4}
 POSITIVE_TAGS    = {"Exercise": +3, "Self-care": +3, "Social": +2}
 
-# ═══════════════════════════════════════════════════
+# ===================================================================
+#  VITALS SCORING WEIGHTS  (v2.1 - Micro-Assessment upgrade)
+#
+#  Input contract: stress / sleep / energy as integers 0-10.
+#  Both old slider clients AND the new multi-question micro-
+#  assessment produce the same 0-10 scale, so backward compat
+#  is fully automatic with zero API schema changes.
+#
+#  Why slightly higher multipliers in v2.1?
+#    The micro-assessment uses 3 behavioural questions per
+#    dimension, producing more reliable values than a single
+#    raw slider drag. Higher multipliers reward that improved
+#    precision without breaking score continuity for users.
+#
+#  v2.0 (slider):   stress=2.0  sleep=1.6  energy=1.2  => vitals +/-24
+#  v2.1 (assessed): stress=2.3  sleep=1.9  energy=1.5  => vitals +/-28
+#  Net increase: ~+17% in vitals range.
+#
+#  Sentiment range reduced 30->28 to rebalance total so
+#  existing users do not see a sudden jump in their scores.
+# ===================================================================
+VITALS_WEIGHTS = {
+    # (neutral_centre, multiplier)
+    # stress  -> higher = more stressed  = LOWER  wellness score
+    # sleep   -> higher = better sleep   = HIGHER wellness score
+    # energy  -> higher = more energetic = HIGHER wellness score
+    "stress": (5, 2.3),   # v2.0: 2.0  (+15%)
+    "sleep" : (5, 1.9),   # v2.0: 1.6  (+19%)
+    "energy": (5, 1.5),   # v2.0: 1.2  (+25%)
+}
+
+# Sentiment contribution range (+/-28).
+# Slightly reduced from +/-30 to rebalance vs upweighted vitals block.
+SENTIMENT_RANGE = 28
+
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  DYNAMIC INSIGHTS  (generated at analysis time)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 INSIGHTS_TEMPLATES = {
     "critical": [
         "Your words carry a deep kind of pain right now, and it takes real courage "
-        "to put it into words. Please know you're not alone — reaching out to someone "
+        "to put it into words. Please know you're not alone Ã¢ÂÂ reaching out to someone "
         "you trust, or a mental health professional, can make a real difference today.",
         "What you've shared reflects significant distress. You don't have to carry this "
         "alone. Please consider contacting a trusted person or mental health helpline immediately.",
     ],
     "high": [
-        "There's a noticeable weight in what you've shared — your feelings are completely valid. "
+        "There's a noticeable weight in what you've shared Ã¢ÂÂ your feelings are completely valid. "
         "You're clearly carrying more than usual. Even one small step, like taking a slow breath "
         "or texting someone you trust, can begin to shift things. You deserve support.",
         "Your reflection shows real strain. Be gentle with yourself today. "
-        "Small acts of self-care — rest, hydration, human connection — have more impact than they seem.",
+        "Small acts of self-care Ã¢ÂÂ rest, hydration, human connection Ã¢ÂÂ have more impact than they seem.",
     ],
     "moderate": [
         "You're navigating real challenges, but there's also resilience in your reflection. "
         "Acknowledging how you feel honestly is already meaningful. Focus on one small thing "
         "you can do for yourself today, and be patient with your progress.",
-        "You seem to be in a mixed place — some difficulties, but you're still reflecting and engaging. "
+        "You seem to be in a mixed place Ã¢ÂÂ some difficulties, but you're still reflecting and engaging. "
         "That self-awareness is a strength. Lean into it by setting one gentle intention for today.",
     ],
     "good": [
         "You appear to be in a fairly stable place. There may be minor stressors, "
         "but your overall tone reflects balance and groundedness. "
-        "Keep nurturing what's working — consistency builds resilience.",
+        "Keep nurturing what's working Ã¢ÂÂ consistency builds resilience.",
         "Your check-in reflects reasonable equilibrium. Stay mindful of the small things "
         "that keep you grounded, and continue showing up for yourself.",
     ],
     "low": [
         "You're doing genuinely well! Your reflection shows a positive and grounded mindset. "
-        "Keep nurturing the habits, routines, and relationships that are lifting you — "
+        "Keep nurturing the habits, routines, and relationships that are lifting you Ã¢ÂÂ "
         "this foundation is worth protecting and sharing.",
         "What a strong check-in! Your words reflect wellbeing and self-awareness. "
-        "Celebrate this — and consider how you can help someone else today.",
+        "Celebrate this Ã¢ÂÂ and consider how you can help someone else today.",
     ],
 }
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  SUGGESTIONS  (expanded, evidence-based)
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 SUGGESTIONS: Dict[str, List[str]] = {
     "anxiety": [
-        "Try box breathing: inhale 4s → hold 4s → exhale 4s → hold 4s. Repeat 4 times",
+        "Try box breathing: inhale 4s Ã¢ÂÂ hold 4s Ã¢ÂÂ exhale 4s Ã¢ÂÂ hold 4s. Repeat 4 times",
         "Write down your top 3 worries, then write one realistic counter-thought for each",
-        "Limit caffeine and screen time for the next 2 hours — both heighten anxiety",
+        "Limit caffeine and screen time for the next 2 hours Ã¢ÂÂ both heighten anxiety",
         "Ground yourself: name 5 things you can see, 4 you can touch, 3 you can hear",
     ],
     "sadness": [
-        "Reach out to one person you trust today — even a short text matters",
+        "Reach out to one person you trust today Ã¢ÂÂ even a short text matters",
         "Step outside for 10 minutes. Sunlight and movement genuinely shift mood",
         "Listen to music that matches your mood first, then gradually shifts lighter",
-        "Write 3 things — however small — that you can appreciate right now",
+        "Write 3 things Ã¢ÂÂ however small Ã¢ÂÂ that you can appreciate right now",
     ],
     "anger": [
         "Take a 10-minute walk before responding to whatever triggered this",
-        "Journal the trigger without filtering — get it all out, then re-read calmly",
+        "Journal the trigger without filtering Ã¢ÂÂ get it all out, then re-read calmly",
         "Try progressive muscle relaxation: tense each muscle group for 5s, then release",
-        "Ask yourself: 'Will this matter in 5 years?' — it reframes urgency",
+        "Ask yourself: 'Will this matter in 5 years?' Ã¢ÂÂ it reframes urgency",
     ],
     "exhaustion": [
-        "Protect your sleep tonight — set a hard 'screens off' time 1 hour before bed",
+        "Protect your sleep tonight Ã¢ÂÂ set a hard 'screens off' time 1 hour before bed",
         "Identify one task you can legitimately drop or delegate today",
         "A 20-minute power nap (set an alarm) can restore alertness without grogginess",
-        "Drink a full glass of water now — dehydration amplifies fatigue significantly",
+        "Drink a full glass of water now Ã¢ÂÂ dehydration amplifies fatigue significantly",
     ],
     "joy": [
-        "Document specifically what made today good — anchor this feeling in memory",
-        "Share your positive energy with someone who needs it — it multiplies",
+        "Document specifically what made today good Ã¢ÂÂ anchor this feeling in memory",
+        "Share your positive energy with someone who needs it Ã¢ÂÂ it multiplies",
         "Plan one small thing to look forward to tomorrow to carry the momentum",
         "Reflect: what habit or decision contributed to this good day? Do more of it",
     ],
@@ -256,33 +292,33 @@ SUGGESTIONS: Dict[str, List[str]] = {
         "Convert your optimism into one concrete action you can take today",
         "Set one micro-goal for the next 24 hours and tell someone about it",
         "Write a short note to your future self about what you're working toward",
-        "Share your progress with one supportive person — accountability accelerates growth",
+        "Share your progress with one supportive person Ã¢ÂÂ accountability accelerates growth",
     ],
     "general_low": [
         "Consider scheduling a session with a mental health professional this week",
         "Use MindPulse's Resources section for guided breathing and crisis support",
-        "Talk to a trusted friend or family member — sharing reduces emotional load by up to 40%",
+        "Talk to a trusted friend or family member Ã¢ÂÂ sharing reduces emotional load by up to 40%",
     ],
     "general_mid": [
-        "Try a 5-minute body scan meditation — close your eyes and notice each body part",
+        "Try a 5-minute body scan meditation Ã¢ÂÂ close your eyes and notice each body part",
         "Hydrate, take regular breaks, and step away from screens periodically today",
-        "Write down one thing you're grateful for right now — specificity makes it more effective",
+        "Write down one thing you're grateful for right now Ã¢ÂÂ specificity makes it more effective",
     ],
     "general_hi": [
         "Celebrate your wins today, no matter how small they seem",
         "Maintain the routines and relationships that are working for you",
-        "Consider helping someone else today — acts of kindness boost your own wellbeing",
+        "Consider helping someone else today Ã¢ÂÂ acts of kindness boost your own wellbeing",
     ],
 }
 
 
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 #  MAIN ANALYZER CLASS
-# ═══════════════════════════════════════════════════
+# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 class MindPulseAnalyzer:
     """
-    MindPulse v2.0 — Advanced wellness scoring engine.
+    MindPulse v2.0 Ã¢ÂÂ Advanced wellness scoring engine.
 
     Key improvements over v1:
     - Negation detection (3-word lookback window per sentence)
@@ -297,28 +333,28 @@ class MindPulseAnalyzer:
     def __init__(self):
         self.vader = SentimentIntensityAnalyzer()
 
-    # ── Tokenise into sentences ───────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Tokenise into sentences Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _sentences(self, text: str) -> List[str]:
         return [s.strip() for s in re.split(r'[.!?]+', text.lower()) if s.strip()]
 
-    # ── Preprocess full text ──────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Preprocess full text Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _preprocess(self, text: str) -> str:
         return re.sub(r'\s+', ' ', text.lower().strip())
 
-    # ── VADER sentiment ───────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ VADER sentiment Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _sentiment(self, text: str) -> Tuple[float, str]:
         scores  = self.vader.polarity_scores(text)
         compound = round(scores["compound"], 4)
         label   = "positive" if compound >= 0.05 else "negative" if compound <= -0.05 else "neutral"
         return compound, label
 
-    # ── Negation window check ─────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Negation window check Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _has_negation(self, words: List[str], idx: int, window: int = 4) -> bool:
         """Check if any of the `window` words before index `idx` is a negation."""
         start = max(0, idx - window)
         return any(w in NEGATIONS for w in words[start:idx])
 
-    # ── Intensity modifier ────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Intensity modifier Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _intensity_multiplier(self, words: List[str], idx: int, window: int = 3) -> float:
         """Look back `window` words for intensifiers or diminishers."""
         start = max(0, idx - window)
@@ -333,7 +369,7 @@ class MindPulseAnalyzer:
                 return INTENSIFIERS[w]
         return 1.0
 
-    # ── Sentence-level emotion detection ─────────────
+    # Ã¢ÂÂÃ¢ÂÂ Sentence-level emotion detection Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _detect_emotions(self, text: str) -> Dict[str, float]:
         """
         Analyse each sentence separately with negation + intensity awareness,
@@ -355,8 +391,8 @@ class MindPulseAnalyzer:
                         score = base * mult
                         # Negate if preceded by negation word
                         if self._has_negation(words, i):
-                            # Negated negative emotion → reduce score to 0
-                            # Negated positive emotion → reduce score to 0
+                            # Negated negative emotion Ã¢ÂÂ reduce score to 0
+                            # Negated positive emotion Ã¢ÂÂ reduce score to 0
                             # In both cases we simply skip the contribution
                             continue
                         totals[emotion] += score
@@ -369,29 +405,46 @@ class MindPulseAnalyzer:
                         if not any(w in NEGATIONS for w in pre[-4:]):
                             totals[emotion] += weight
 
-        # Normalise each to 0–1  (cap at 1.0)
+        # Normalise each to 0Ã¢ÂÂ1  (cap at 1.0)
         for emotion in totals:
             totals[emotion] = min(1.0, round(totals[emotion] / max(len(sentences), 1), 4))
         return totals
 
-    # ── Crisis detection ──────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Vitals normaliser (backward-compat) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+    @staticmethod
+    def _normalize_vitals(stress, sleep, energy):
+        """Clamp vitals to [0, 10] safely.
+
+        Handles:
+          - Old slider clients (already 0-10 integers)
+          - New micro-assessment clients (also 0-10)
+          - Edge cases: None, floats, out-of-range values
+        """
+        def _clamp(v, default=5):
+            try:
+                return max(0, min(10, int(v)))
+            except (TypeError, ValueError):
+                return default
+        return _clamp(stress), _clamp(sleep), _clamp(energy)
+
+    # Ã¢ÂÂÃ¢ÂÂ Crisis detection Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _check_crisis(self, text: str) -> bool:
         for phrase in CRISIS_KEYWORDS:
             if phrase in text:
                 return True
         return False
 
-    # ── Improvement signals ───────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Improvement signals Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _improvement_bonus(self, text: str) -> int:
         hits = sum(1 for s in IMPROVEMENT_SIGNALS if s in text)
         return min(8, hits * 3)   # max +8 bonus
 
-    # ── Support network signals ───────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Support network signals Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _support_bonus(self, text: str) -> int:
         hits = sum(1 for s in SUPPORT_SIGNALS if s in text)
         return min(6, hits * 2)   # max +6 bonus
 
-    # ── Text depth ────────────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Text depth Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _text_depth(self, text: str) -> Tuple[str, int]:
         words = [w for w in text.split() if len(w) > 2]
         n = len(words)
@@ -400,20 +453,20 @@ class MindPulseAnalyzer:
         if n < 60:   return "reflective", n
         return "deep", n
 
-    # ── Confidence score (how much text data we had) ─
+    # Ã¢ÂÂÃ¢ÂÂ Confidence score (how much text data we had) Ã¢ÂÂ
     def _confidence(self, word_count: int, depth: str) -> float:
-        """Returns 0.0–1.0 confidence in the model output."""
+        """Returns 0.0Ã¢ÂÂ1.0 confidence in the model output."""
         if word_count < 5:   return 0.40
         if word_count < 15:  return 0.60
         if word_count < 40:  return 0.80
         return 0.95
 
-    # ── Dominant emotion ─────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Dominant emotion Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _dominant(self, emotions: Dict[str, float]) -> str:
         top = max(emotions, key=emotions.get)
         return top if emotions[top] > 0.08 else "neutral"
 
-    # ── Wellness score calculation ────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Wellness score calculation Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _compute_score(
         self,
         sentiment:  float,
@@ -426,49 +479,53 @@ class MindPulseAnalyzer:
         crisis:     bool,
         depth:      str,
         text:       str,
-    ) -> int:
-        # ── Component 1: Sentiment (−30 … +30) ────────
-        sent_score = round(sentiment * 30)
+        ) -> int:
+        # Sanitise inputs -- safe for both old slider and new micro-assessment
+        s, sl, e = self._normalize_vitals(stress, sleep, energy)
 
-        # ── Component 2: Vitals (−24 … +24) ───────────
-        # Stress:  0→+10, 10→−10  (higher stress = worse)
-        # Sleep:   0→−8,  10→+8
-        # Energy:  0→−6,  10→+6
-        vitals = (round((5 - stress) * 2.0)
-                + round((sleep  - 5) * 1.6)
-                + round((energy - 5) * 1.2))
+        # -- Component 1: Sentiment (-28 ... +28) --------------------------
+        # v2.1: range reduced 30->28 to rebalance vs upweighted vitals block
+        sent_score = round(sentiment * SENTIMENT_RANGE)
 
-        # ── Component 3: Mood (−24 … +22) ─────────────
+        # -- Component 2: Vitals (-28 ... +28)  v2.1 ----------------------
+        # stress: 0->+11.5, 10->-11.5  (higher stress = worse wellness)
+        # sleep:  0->-9.5,  10->+9.5   (higher sleep  = better wellness)
+        # energy: 0->-7.5,  10->+7.5   (higher energy = better wellness)
+        sc  = VITALS_WEIGHTS["stress"]
+        slc = VITALS_WEIGHTS["sleep"]
+        ec  = VITALS_WEIGHTS["energy"]
+        vitals = (round((sc[0]  - s)  * sc[1])
+                + round((sl - slc[0]) * slc[1])
+                + round((e  - ec[0])  * ec[1]))
+
+        # -- Component 3: Mood (-24 ... +22) --------------------------------
         mood_score = MOOD_WEIGHTS.get(mood, 0)
 
-        # ── Component 4: Emotions (−24 … +14) ─────────
-        neg_emotion = (emotions["anxiety"]   * 9
-                     + emotions["sadness"]   * 9
-                     + emotions["anger"]     * 6
-                     + emotions["exhaustion"]* 7)
+        # -- Component 4: Emotions (-24 ... +14) ----------------------------
+        neg_emotion = (emotions["anxiety"]    * 9
+                     + emotions["sadness"]    * 9
+                     + emotions["anger"]      * 6
+                     + emotions["exhaustion"] * 7)
         pos_emotion = (emotions["joy"]  * 9
                      + emotions["hope"] * 5)
         emotion_score = round(pos_emotion - neg_emotion)
 
-        # ── Component 5: Tags (−8 … +6) ───────────────
-        tag_score = sum(HIGH_RISK_TAGS.get(t, 0) for t in tags)
-        tag_score += sum(POSITIVE_TAGS.get(t, 0) for t in tags)
+        # -- Component 5: Tags (-8 ... +6) ----------------------------------
+        tag_score  = sum(HIGH_RISK_TAGS.get(t, 0) for t in tags)
+        tag_score += sum(POSITIVE_TAGS.get(t, 0)  for t in tags)
 
-        # ── Component 6: Bonus signals (+0 … +14) ─────
+        # -- Component 6: Bonus signals (+0 ... +14) ------------------------
         bonus = self._improvement_bonus(text) + self._support_bonus(text)
         if depth in ("reflective", "deep"):
-            bonus += 3   # deeper reflection = more engagement
+            bonus += 3
 
-        # ── Final score ────────────────────────────────
+        # -- Final score ----------------------------------------------------
         raw = 50 + sent_score + vitals + mood_score + emotion_score + tag_score + bonus
-
-        # Crisis hard cap
         if crisis:
-            raw = min(raw, 20)
-
+            raw = min(raw, 20)   # crisis hard cap
         return max(0, min(100, round(raw)))
 
-    # ── Risk level ────────────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Risk level Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _risk_level(self, score: int, crisis: bool) -> str:
         if crisis:        return "critical"
         if score >= 78:   return "low"
@@ -476,7 +533,7 @@ class MindPulseAnalyzer:
         if score >= 36:   return "high"
         return "critical"
 
-    # ── Dynamic insight ───────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Dynamic insight Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _insight(self, risk: str, dominant: str, improvement: int, support: int) -> str:
         import random
         base = random.choice(INSIGHTS_TEMPLATES.get(risk, INSIGHTS_TEMPLATES["moderate"]))
@@ -486,10 +543,10 @@ class MindPulseAnalyzer:
         if support > 0:
             base += " Reaching out to others shows real self-awareness and strength."
         if dominant == "exhaustion" and risk == "moderate":
-            base += " Pay special attention to rest — exhaustion compounds other difficulties."
+            base += " Pay special attention to rest Ã¢ÂÂ exhaustion compounds other difficulties."
         return base
 
-    # ── Suggestions ───────────────────────────────────
+    # Ã¢ÂÂÃ¢ÂÂ Suggestions Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def _get_suggestions(self, dominant: str, risk: str, score: int) -> List[str]:
         if risk == "critical":
             return SUGGESTIONS["general_low"]
@@ -508,7 +565,7 @@ class MindPulseAnalyzer:
         combined = specific + [general[0]]
         return combined[:3] if len(combined) >= 3 else (general[:3])
 
-    # ══ PUBLIC ENTRY POINT ════════════════════════════
+    # Ã¢ÂÂÃ¢ÂÂ PUBLIC ENTRY POINT Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
     def analyze(
         self,
         text:   str,
@@ -553,7 +610,7 @@ class MindPulseAnalyzer:
                 isear_classes = list(isear_model.classes_)
                 isear_conf    = float(isear_proba[isear_classes.index(isear_pred)])
 
-                # Full ISEAR 7-class → MindPulse UI label mapping
+                # Full ISEAR 7-class Ã¢ÂÂ MindPulse UI label mapping
                 emotion_mapping = {
                     "fear":    "anxiety",
                     "joy":     "joy",
@@ -606,7 +663,7 @@ class MindPulseAnalyzer:
                     vader_wellness = 58 + vader_compound * 18
                     score = round(ml_score * 0.50 + vader_wellness * 0.50)
 
-                # ISEAR emotion fine-tune (±8)
+                # ISEAR emotion fine-tune (ÃÂ±8)
                 isear_correction = 0
                 if dominant == "joy":                        isear_correction = +8
                 elif dominant in ("anxiety", "sadness"):    isear_correction = -8
@@ -628,11 +685,11 @@ class MindPulseAnalyzer:
                 ml_success = True
 
             except Exception as ml_err:
-                print(f"[ML INFERENCE ERROR] {ml_err!r} — using rule-based fallback")
+                print(f"[ML INFERENCE ERROR] {ml_err!r} Ã¢ÂÂ using rule-based fallback")
                 ml_success = False
 
             if not ml_success:
-                # ML crashed mid-inference → fall back to rule-based
+                # ML crashed mid-inference Ã¢ÂÂ fall back to rule-based
                 sent_score, sent_label = self._sentiment(clean)
                 crisis   = self._check_crisis(clean)
                 dominant = self._dominant(emotions)
