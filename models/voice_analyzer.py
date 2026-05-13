@@ -154,53 +154,77 @@ def _extract_mel(audio_bytes: bytes):
 
 
 # =============================================================================
-# PROSODIC EXTRACTOR  (for sklearn fallback — 111 features)
-# Verified: scaler.n_features_in_ == 111, model.n_features_in_ == 111
+# PROSODIC EXTRACTOR  (for sklearn fallback — 130 features, v3)
 # Feature layout:
-#   MFCC-13 × 6 stats (mean/std for mfcc/delta/delta2) = 78
-#   Chroma-12 × 2 stats (mean + std)                   = 24
-#   ZCR mean+std, RMS mean+std, Centroid mean+std,
-#   Bandwidth mean+std, Rolloff mean                    =  9
-#   Total = 111
+#   MFCC-13 x6 stats (mean/std for mfcc/delta/delta2)  = 78
+#   Chroma-12 x2 stats (mean + std)                    = 24
+#   ZCR x2, RMS x2, Centroid x2, BW x2, Rolloff mean  =  9  -- subtotal 111
+#   Spectral contrast (7 bands) x2 stats               = 14  -- NEW
+#   Spectral flatness x2 stats                         =  2  -- NEW
+#   Tonnetz (6 dims) mean                              =  6  -- NEW
+#   TOTAL                                              = 130  (trimmed to N_FEATURES)
+#   Must match extract_130() in training script EXACTLY.
 # =============================================================================
-def _extract_prosodic_111(audio_bytes: bytes):
+_N_FEATURES = 130
+
+def _extract_prosodic_130(audio_bytes: bytes):
     import librosa
     SR = 22050
     y, _ = librosa.load(io.BytesIO(audio_bytes), sr=SR, duration=4, mono=True)
     if len(y) < SR * 0.5:
         return None
 
-    # ── MFCC (13) + delta + delta-delta  (78 features) ───────────────────────
+    # ── MFCC (13) + delta + delta-delta  (78) ────────────────────────────────
     mfcc    = librosa.feature.mfcc(y=y, sr=SR, n_mfcc=13)
     d_mfcc  = librosa.feature.delta(mfcc)
     d2_mfcc = librosa.feature.delta(mfcc, order=2)
-
-    feats = np.concatenate([
+    feats   = np.concatenate([
         mfcc.mean(axis=1),    d_mfcc.mean(axis=1),   d2_mfcc.mean(axis=1),
         mfcc.std(axis=1),     d_mfcc.std(axis=1),    d2_mfcc.std(axis=1),
     ])  # 78
 
-    # ── Chroma 12 × mean + std  (24 features) ────────────────────────────────
+    # ── Chroma 12 x mean + std  (24) ─────────────────────────────────────────
     chroma = librosa.feature.chroma_stft(y=y, sr=SR)
-    feats  = np.concatenate([feats, chroma.mean(axis=1), chroma.std(axis=1)])  # +24
+    feats  = np.concatenate([feats, chroma.mean(axis=1), chroma.std(axis=1)])  # +24=102
 
-    # ── Spectral / energy features  (9 features) ─────────────────────────────
+    # ── Basic spectral features  (9) ─────────────────────────────────────────
     zcr     = librosa.feature.zero_crossing_rate(y)[0]
     rms     = librosa.feature.rms(y=y)[0]
     cent    = librosa.feature.spectral_centroid(y=y, sr=SR)[0]
     bw      = librosa.feature.spectral_bandwidth(y=y, sr=SR)[0]
     rolloff = librosa.feature.spectral_rolloff(y=y, sr=SR)[0]
-
-    feats = np.concatenate([
+    feats   = np.concatenate([
         feats,
         [zcr.mean(), zcr.std(),
          rms.mean(), rms.std(),
          cent.mean(), cent.std(),
          bw.mean(),  bw.std(),
          rolloff.mean()],
-    ])  # +9 → total 111
+    ])  # +9 = 111
+
+    # ── NEW: Spectral contrast (7 bands x2)  (14) ────────────────────────────
+    contrast = librosa.feature.spectral_contrast(y=y, sr=SR)  # (7, T)
+    feats    = np.concatenate([feats, contrast.mean(axis=1), contrast.std(axis=1)])  # +14=125
+
+    # ── NEW: Spectral flatness (2) — breathiness ──────────────────────────────
+    flatness = librosa.feature.spectral_flatness(y=y)[0]
+    feats    = np.concatenate([feats, [flatness.mean(), flatness.std()]])  # +2=127
+
+    # ── NEW: Tonnetz (6) — tonal centroid stability ───────────────────────────
+    try:
+        y_harm  = librosa.effects.harmonic(y)
+        tonnetz = librosa.feature.tonnetz(y=y_harm, sr=SR)  # (6, T)
+        feats   = np.concatenate([feats, tonnetz.mean(axis=1)])  # +6=133
+    except Exception:
+        feats   = np.concatenate([feats, np.zeros(6, dtype=np.float32)])
+
+    # ── Trim/pad to exactly _N_FEATURES ──────────────────────────────────────
+    feats = feats[:_N_FEATURES]
+    if len(feats) < _N_FEATURES:
+        feats = np.pad(feats, (0, _N_FEATURES - len(feats)))
 
     return feats.astype(np.float32)
+
 
 
 # =============================================================================
@@ -234,10 +258,10 @@ def predict_voice_emotion(audio_bytes: bytes) -> dict:
         except Exception as e:
             print(f"[Voice CNN ERROR] {e} — falling back to sklearn")
 
-    # ── Sklearn path (fallback — SVM+RF+GB ensemble, 66.8% accuracy) ───────────────
+    # -- Sklearn path (fallback - SVM+RF+GB ensemble v3, 69.5% accuracy, 130 features) --
     if SKLEARN_ENABLED:
         try:
-            feats = _extract_prosodic_111(audio_bytes)
+            feats = _extract_prosodic_130(audio_bytes)
             if feats is None:
                 raise ValueError("Audio too short for prosodic extraction")
             scaled     = sk_scaler.transform([feats])
@@ -256,7 +280,7 @@ def predict_voice_emotion(audio_bytes: bytes) -> dict:
                 "risk_offset":      VOICE_EMOTION_RISK_OFFSET.get(emotion, 0),
                 "ml_enabled":       True,
                 "low_confidence":   confidence < CONFIDENCE_THRESHOLD,
-                "features_used":    "prosodic-111 sklearn SVM+RF+GB (fallback)",
+                "features_used":    "prosodic-130 sklearn SVM+RF+GB v3 (fallback)",
             }
         except Exception as e:
             print(f"[Voice Sklearn ERROR] {e}")
