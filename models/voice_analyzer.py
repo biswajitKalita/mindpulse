@@ -96,15 +96,25 @@ except Exception as e:
 SKLEARN_ENABLED  = False
 VOICE_ML_ENABLED = False
 
-sk_model = sk_scaler = None
+sk_model = sk_scaler = sk_label_enc = None
+FALLBACK_LE = _os.path.join(_MODELS, "voice_label_encoder.pkl")
 if not CNN_ENABLED:
     try:
         import joblib
-        sk_model       = joblib.load(FALLBACK_MODEL)
-        sk_scaler      = joblib.load(FALLBACK_SCALER)
-        SKLEARN_ENABLED = True
+        sk_model        = joblib.load(FALLBACK_MODEL)
+        sk_scaler       = joblib.load(FALLBACK_SCALER)
+        # Label encoder maps integer predictions (0-4) back to class strings
+        try:
+            sk_label_enc = joblib.load(FALLBACK_LE)
+            print(f"[OK] Voice label encoder loaded | classes: {list(sk_label_enc.classes_)}")
+        except Exception:
+            # Fallback: build from known class order if file not present
+            from sklearn.preprocessing import LabelEncoder
+            sk_label_enc = LabelEncoder().fit(["anger","anxiety","calm","joy","sadness"])
+            print("[OK] Voice label encoder built from defaults")
+        SKLEARN_ENABLED  = True
         VOICE_ML_ENABLED = True
-        print("[OK] Fallback sklearn voice model loaded (111-feature VotingClassifier)")
+        print("[OK] Fallback sklearn voice model loaded (111-feature VotingClassifier SVM+RF+GB)")
     except Exception as e:
         print(f"[WARN] Sklearn fallback also failed: {e}")
 else:
@@ -224,24 +234,29 @@ def predict_voice_emotion(audio_bytes: bytes) -> dict:
         except Exception as e:
             print(f"[Voice CNN ERROR] {e} — falling back to sklearn")
 
-    # ── Sklearn path (fallback — now properly wired) ──────────────────────────
+    # ── Sklearn path (fallback — SVM+RF+GB ensemble, 66.8% accuracy) ───────────────
     if SKLEARN_ENABLED:
         try:
             feats = _extract_prosodic_111(audio_bytes)
             if feats is None:
                 raise ValueError("Audio too short for prosodic extraction")
             scaled     = sk_scaler.transform([feats])
-            pred       = sk_model.predict(scaled)[0]
+            pred_raw   = sk_model.predict(scaled)[0]
             proba      = sk_model.predict_proba(scaled)[0]
             confidence = float(np.max(proba))
-            emotion    = pred if confidence >= CONFIDENCE_THRESHOLD else "calm"
+            # Decode integer label to string (model trained on LabelEncoder integers)
+            if isinstance(pred_raw, (int, np.integer)):
+                emotion_raw = str(sk_label_enc.inverse_transform([int(pred_raw)])[0])
+            else:
+                emotion_raw = str(pred_raw)   # already a string (legacy model)
+            emotion = emotion_raw if confidence >= CONFIDENCE_THRESHOLD else "calm"
             return {
                 "voice_emotion":    emotion,
                 "voice_confidence": round(confidence, 3),
                 "risk_offset":      VOICE_EMOTION_RISK_OFFSET.get(emotion, 0),
                 "ml_enabled":       True,
                 "low_confidence":   confidence < CONFIDENCE_THRESHOLD,
-                "features_used":    "prosodic-111 sklearn (fallback)",
+                "features_used":    "prosodic-111 sklearn SVM+RF+GB (fallback)",
             }
         except Exception as e:
             print(f"[Voice Sklearn ERROR] {e}")
