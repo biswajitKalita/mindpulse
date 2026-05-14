@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from schemas.checkin import CheckInRequest, AnalysisResponse, EmotionBreakdown
 from models.analyzer import MindPulseAnalyzer
-from models.voice_analyzer import predict_voice_emotion, VOICE_ML_ENABLED
+from models.voice_analyzer import predict_voice_emotion, VOICE_ML_ENABLED, CNN_ENABLED, ONNX_ENABLED, SKLEARN_ENABLED
 
 router = APIRouter()
 analyzer = MindPulseAnalyzer()
@@ -63,14 +63,22 @@ async def analyze_voice(audio: UploadFile = File(...)):
     return result
 
 
-# ─── Health Check ───────────────────────────────────────────────────────────
+# ─── Health Check ────────────────────────────────────────────────────────────
 
 @router.get("/health")
 async def health():
     from models.analyzer import ML_ENABLED
+    if ONNX_ENABLED:
+        voice_label = "voice_cnn_model.onnx (ONNX)"
+    elif CNN_ENABLED:
+        voice_label = "voice_cnn_model.pt (PyTorch)"
+    elif SKLEARN_ENABLED:
+        voice_label = "voice_emotion_model.pkl (sklearn)"
+    else:
+        voice_label = "rule-based fallback"
     return {
         "status":      "ok",
         "text_model":  "MindPulse Tri-Model Ensemble v2.0 (ML)" if ML_ENABLED else "MindPulse Rule-Based v2.0 (fallback)",
-        "voice_model": "voice_emotion_model.pkl" if VOICE_ML_ENABLED else "rule-based fallback",
+        "voice_model": voice_label,
         "ml_enabled":  ML_ENABLED,
     }
