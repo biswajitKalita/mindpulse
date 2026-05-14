@@ -592,16 +592,22 @@ class MindPulseAnalyzer:
                 s_vec    = suicide_vectorizer.transform([ml_text])
                 s_proba  = suicide_model.predict_proba(s_vec)[0]
                 s_classes = list(suicide_model.classes_)
-                # Safely find 'suicide' label regardless of exact class name
+                # Find the POSITIVE 'suicide' class index — must exclude 'non-suicide'.
+                # Bug note: 'suicid' in str(c) also matches 'non-suicide' (index 0),
+                # so we require the class label to NOT contain 'non' as well.
                 suicide_idx = next(
-                    (i for i, c in enumerate(s_classes) if 'suicid' in str(c).lower()), None
+                    (i for i, c in enumerate(s_classes)
+                     if 'suicid' in str(c).lower() and 'non' not in str(c).lower()),
+                    None
                 )
                 suicide_confidence = float(s_proba[suicide_idx]) if suicide_idx is not None else 0.0
 
-                # Only flag as crisis if ML is very confident AND word rules confirm
+                # Crisis only when BOTH the ML is confident AND keyword rules confirm.
+                # Removed the lone ">= 0.92" shortcut — it bypassed keyword rules and
+                # caused false positives on any text where non-suicide prob was high.
                 ml_crisis   = suicide_confidence >= 0.75
                 rule_crisis = self._check_crisis(clean)
-                crisis = (ml_crisis and rule_crisis) or (suicide_confidence >= 0.92)
+                crisis = ml_crisis and rule_crisis
 
                 # 2. ISEAR EMOTION detector
                 i_vec = isear_vectorizer.transform([ml_text])
