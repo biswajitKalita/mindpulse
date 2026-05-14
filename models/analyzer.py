@@ -154,10 +154,12 @@ CRISIS_KEYWORDS = [
     "suicidal", "suicide", "kill myself", "want to die", "end my life",
     "self harm", "self-harm", "cutting myself", "hurt myself", "no reason to live",
     "better off dead", "give up on life", "not worth living", "ending it all",
-    "ending it all", "overdose", "can't go on", "don't want to be here",
+    "overdose", "can't go on", "don't want to be here",
     "wish i was dead", "wish i were dead", "rather be dead", "take my life",
     "end it all", "end the pain", "no point living", "no will to live",
     "disappear forever", "never wake up", "sleep forever", "can't do this anymore",
+    "ending my life", "thinking about suicide", "planning to end it",
+    "don't want to live", "no longer want to be here", "thinking of ending",
 ]
 
 # Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
