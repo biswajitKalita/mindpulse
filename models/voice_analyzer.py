@@ -29,95 +29,94 @@ VOICE_EMOTION_RISK_OFFSET = {
 }
 CONFIDENCE_THRESHOLD = 0.42
 
-# ── Priority 1: ONNX runtime (lightweight, works on Render free tier) ────────
-CNN_ENABLED  = False
-cnn_model    = None   # will hold ort.InferenceSession or torch module
-cnn_meta     = None   # dict with x_mean, x_std, classes, etc.
-ONNX_ENABLED = False
-
-try:
+def _load_voice_models():
+    """
+    Load voice model in priority order:
+      1. ONNX runtime  (30 MB  — works on Render free tier)
+      2. PyTorch       (400 MB — local dev only, OOM on Render)
+      3. sklearn pkl   (fallback)
+    Returns (cnn_model, cnn_meta, CNN_ENABLED, ONNX_ENABLED, SKLEARN_ENABLED, VOICE_ML_ENABLED, sk_model, sk_scaler)
+    """
     import json as _json
-    import onnxruntime as ort
-    if not _os.path.exists(MODEL_ONNX):
-        raise FileNotFoundError(f"ONNX file not found: {MODEL_ONNX}")
-    if not _os.path.exists(MODEL_META_JSON):
-        raise FileNotFoundError(f"Meta JSON not found: {MODEL_META_JSON}")
-    _ort_session = ort.InferenceSession(MODEL_ONNX, providers=["CPUExecutionProvider"])
-    with open(MODEL_META_JSON) as _f:
-        cnn_meta = _json.load(_f)
-    cnn_model    = _ort_session
-    CNN_ENABLED  = True
-    ONNX_ENABLED = True
-    print(f"[OK] Voice CNN (ONNX) loaded | classes: {cnn_meta['classes']}")
-except Exception as _onnx_err:
-    print(f"[INFO] ONNX not available ({_onnx_err}), trying PyTorch...")
 
-    # ── Priority 2: PyTorch (works locally, OOM on Render free tier) ──────────
-    if not CNN_ENABLED:
-        try:
-            import torch
-            import torch.nn as nn
+    # ── 1. Try ONNX ──────────────────────────────────────────────────────────
+    try:
+        import onnxruntime as ort
+        if not _os.path.exists(MODEL_ONNX):
+            raise FileNotFoundError(f"ONNX not found: {MODEL_ONNX}")
+        if not _os.path.exists(MODEL_META_JSON):
+            raise FileNotFoundError(f"Meta JSON not found: {MODEL_META_JSON}")
+        session = ort.InferenceSession(MODEL_ONNX, providers=["CPUExecutionProvider"])
+        with open(MODEL_META_JSON) as f:
+            meta = _json.load(f)
+        print(f"[OK] Voice CNN (ONNX) loaded | classes: {meta['classes']}")
+        return session, meta, True, True, False, True, None, None
+    except Exception as e:
+        print(f"[INFO] ONNX unavailable ({e}), trying PyTorch...")
 
-            class ConvBlock(nn.Module):
-                """Must match training script v4.1 exactly (uses enc/head naming)."""
-                def __init__(self, in_c, out_c, pool=(2,2)):
-                    super().__init__()
-                    self.net  = nn.Sequential(
-                        nn.Conv2d(in_c, out_c, 3, padding=1, bias=False),
-                        nn.BatchNorm2d(out_c), nn.ELU(),
-                        nn.Conv2d(out_c, out_c, 3, padding=1, bias=False),
-                        nn.BatchNorm2d(out_c), nn.ELU(),
-                        nn.MaxPool2d(pool), nn.Dropout2d(0.2),
-                    )
-                    self.skip = nn.Sequential(nn.Conv2d(in_c, out_c, 1, bias=False),
-                                               nn.MaxPool2d(pool))
-                def forward(self, x):
-                    return self.net(x) + self.skip(x)
+    # ── 2. Try PyTorch ───────────────────────────────────────────────────────
+    try:
+        import torch
+        import torch.nn as nn
 
-            class EmotionCNN(nn.Module):
-                def __init__(self, n_classes=5):
-                    super().__init__()
-                    self.enc = nn.Sequential(
-                        ConvBlock(1,  32, (2,2)),
-                        ConvBlock(32, 64, (2,2)),
-                        ConvBlock(64,128, (2,2)),
-                        ConvBlock(128,256,(2,2)),
-                        nn.AdaptiveAvgPool2d((1,1)),
-                    )
-                    self.head = nn.Sequential(
-                        nn.Flatten(),
-                        nn.Linear(256, 256), nn.ELU(), nn.Dropout(0.4),
-                        nn.Linear(256, n_classes)
-                    )
-                def forward(self, x): return self.head(self.enc(x))
+        class ConvBlock(nn.Module):
+            def __init__(self, in_c, out_c, pool=(2, 2)):
+                super().__init__()
+                self.net = nn.Sequential(
+                    nn.Conv2d(in_c, out_c, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(out_c), nn.ELU(),
+                    nn.Conv2d(out_c, out_c, 3, padding=1, bias=False),
+                    nn.BatchNorm2d(out_c), nn.ELU(),
+                    nn.MaxPool2d(pool), nn.Dropout2d(0.2),
+                )
+                self.skip = nn.Sequential(
+                    nn.Conv2d(in_c, out_c, 1, bias=False), nn.MaxPool2d(pool)
+                )
+            def forward(self, x):
+                return self.net(x) + self.skip(x)
 
-            checkpoint = torch.load(MODEL_PT, map_location="cpu", weights_only=False)
-            n_cls = len(checkpoint["classes"])
-            _pt_model = EmotionCNN(n_classes=n_cls)
-            _pt_model.load_state_dict(checkpoint["model_state"])
-            _pt_model.eval()
-            cnn_model   = _pt_model
-            cnn_meta    = checkpoint
-            CNN_ENABLED = True
-            print(f"[OK] Voice CNN v4.1 (PyTorch) loaded | classes: {checkpoint['classes']}")
-        except Exception as e:
-            print(f"[WARN] PyTorch CNN not loaded: {e} — trying sklearn fallback")
+        class EmotionCNN(nn.Module):
+            def __init__(self, n_classes=5):
+                super().__init__()
+                self.enc = nn.Sequential(
+                    ConvBlock(1, 32), ConvBlock(32, 64),
+                    ConvBlock(64, 128), ConvBlock(128, 256),
+                    nn.AdaptiveAvgPool2d((1, 1)),
+                )
+                self.head = nn.Sequential(
+                    nn.Flatten(),
+                    nn.Linear(256, 256), nn.ELU(), nn.Dropout(0.4),
+                    nn.Linear(256, n_classes),
+                )
+            def forward(self, x):
+                return self.head(self.enc(x))
 
-# ── Priority 3: sklearn fallback ─────────────────────────────────────────────
-SKLEARN_ENABLED = False
-VOICE_ML_ENABLED = CNN_ENABLED
-sk_model = sk_scaler = None
-if not CNN_ENABLED:
+        ckpt = torch.load(MODEL_PT, map_location="cpu", weights_only=False)
+        model = EmotionCNN(n_classes=len(ckpt["classes"]))
+        model.load_state_dict(ckpt["model_state"])
+        model.eval()
+        print(f"[OK] Voice CNN (PyTorch) loaded | classes: {ckpt['classes']}")
+        return model, ckpt, True, False, False, True, None, None
+    except Exception as e:
+        print(f"[WARN] PyTorch not loaded: {e}, trying sklearn...")
+
+    # ── 3. Try sklearn fallback ───────────────────────────────────────────────
     try:
         import joblib
-        sk_model   = joblib.load(FALLBACK_MODEL)
-        sk_scaler  = joblib.load(FALLBACK_SCALER)
-        SKLEARN_ENABLED  = True
-        VOICE_ML_ENABLED = True
+        sk_m = joblib.load(FALLBACK_MODEL)
+        sk_s = joblib.load(FALLBACK_SCALER)
         print("[OK] Fallback sklearn model loaded")
+        return None, None, False, False, True, True, sk_m, sk_s
     except Exception as e:
-        print(f"[WARN] Fallback also failed: {e}")
+        print(f"[WARN] Sklearn fallback also failed: {e}")
 
+    return None, None, False, False, False, False, None, None
+
+
+(cnn_model, cnn_meta,
+ CNN_ENABLED, ONNX_ENABLED,
+ SKLEARN_ENABLED, VOICE_ML_ENABLED,
+ sk_model, sk_scaler) = _load_voice_models()
 
 
 # =============================================================================
