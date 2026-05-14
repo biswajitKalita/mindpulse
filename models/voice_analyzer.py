@@ -213,11 +213,22 @@ def predict_voice_emotion(audio_bytes: bytes) -> dict:
         except Exception as e:
             print(f"[Voice CNN ERROR] {e}")
 
-    # ── Sklearn fallback ──────────────────────────────────────────────────────
+    # ── Sklearn fallback (inline prosodic features — v3 module removed) ──────
     if SKLEARN_ENABLED:
         try:
-            from models.voice_analyzer_v3 import extract_prosodic_features
-            feats  = extract_prosodic_features(audio_bytes)
+            import librosa
+            y, sr = librosa.load(io.BytesIO(audio_bytes), sr=22050, duration=4, mono=True)
+            if len(y) < sr * 0.5:
+                raise ValueError("Audio too short for sklearn fallback")
+            mfcc  = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+            delta = librosa.feature.delta(mfcc)
+            rms   = librosa.feature.rms(y=y)
+            zcr   = librosa.feature.zero_crossing_rate(y)
+            feats = np.concatenate([
+                mfcc.mean(axis=1), mfcc.std(axis=1),
+                delta.mean(axis=1),
+                rms.mean(axis=1), zcr.mean(axis=1),
+            ])
             scaled = sk_scaler.transform([feats])
             pred   = sk_model.predict(scaled)[0]
             proba  = sk_model.predict_proba(scaled)[0]
@@ -228,10 +239,11 @@ def predict_voice_emotion(audio_bytes: bytes) -> dict:
                 "risk_offset":      VOICE_EMOTION_RISK_OFFSET.get(pred, 0),
                 "ml_enabled":       True,
                 "low_confidence":   conf < CONFIDENCE_THRESHOLD,
-                "features_used":    "prosodic v3 (fallback)",
+                "features_used":    "prosodic sklearn (fallback)",
             }
         except Exception as e:
             print(f"[Voice Fallback ERROR] {e}")
+
 
     return {
         "voice_emotion":    "calm",
