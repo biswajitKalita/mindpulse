@@ -107,12 +107,27 @@ def _extract_mel(audio_bytes: bytes) -> "np.ndarray | None":
         return None
     SR       = cnn_meta.get("sr",       22050)
     DURATION = cnn_meta.get("duration", 4)
-    N_MELS   = cnn_meta.get("n_mels",   128)
+    N_MELS   = cnn_meta.get("n_mels",   64)   # training default was 64, not 128
     HOP      = cnn_meta.get("hop",      512)
     N_FFT    = cnn_meta.get("n_fft",    2048)
     FIXED    = cnn_meta.get("fixed_len", int(SR * DURATION / HOP) + 1)
+    # Use GLOBAL normalisation stats saved during training (not per-sample)
+    X_MEAN   = float(cnn_meta.get("x_mean", -61.0))
+    X_STD    = float(cnn_meta.get("x_std",   16.0))   # typical mel-db std
 
-    y, sr = librosa.load(io.BytesIO(audio_bytes), sr=SR, duration=DURATION, mono=True)
+    try:
+        y, sr = librosa.load(io.BytesIO(audio_bytes), sr=SR, duration=DURATION, mono=True)
+    except Exception:
+        # webm/ogg may need audioread — try again without format hint
+        try:
+            import soundfile as sf
+            y, sr = sf.read(io.BytesIO(audio_bytes))
+            import librosa.core as lc
+            y = lc.resample(y if y.ndim == 1 else y.mean(axis=1), orig_sr=sr, target_sr=SR)
+            sr = SR
+        except Exception:
+            return None
+
     target = SR * DURATION
     if len(y) < SR * 0.5:
         return None
@@ -122,12 +137,14 @@ def _extract_mel(audio_bytes: bytes) -> "np.ndarray | None":
                                              hop_length=HOP, n_mels=N_MELS, fmax=8000)
     mel_db = librosa.power_to_db(mel, ref=np.max).astype(np.float32)
     if mel_db.shape[1] < FIXED:
-        mel_db = np.pad(mel_db, ((0,0),(0, FIXED - mel_db.shape[1])))
+        mel_db = np.pad(mel_db, ((0, 0), (0, FIXED - mel_db.shape[1])))
     else:
         mel_db = mel_db[:, :FIXED]
 
-    mel_db = (mel_db - mel_db.mean()) / (mel_db.std() + 1e-6)
+    # Normalise with GLOBAL stats (matches training — crucial for correct predictions)
+    mel_db = (mel_db - X_MEAN) / (X_STD + 1e-6)
     return mel_db
+
 
 
 # =============================================================================
