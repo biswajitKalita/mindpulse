@@ -960,10 +960,10 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
             return (
               <div key={s.num} style={{ display: 'flex', alignItems: 'center' }}>
                 {/* Connector line */}
-                {i > 0 && <div style={{ width: 60, height: 2, background: done || active ? 'linear-gradient(90deg,#00E5FF,rgba(0,229,255,0.4))' : 'rgba(255,255,255,0.07)', transition: 'background .4s', marginRight: 0 }} />}
+                {i > 0 && <div className="step-connector" style={{ width: 60, height: 2, background: done || active ? 'linear-gradient(90deg,#00E5FF,rgba(0,229,255,0.4))' : 'rgba(255,255,255,0.07)', transition: 'background .4s', marginRight: 0 }} />}
                 {/* Step circle */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <div style={{
+                  <div className="step-circle" style={{
                     width: 36, height: 36, borderRadius: '50%',
                     background : done ? 'linear-gradient(135deg,#00E5FF,#00b4d8)' : active ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.04)',
                     border     : `2px solid ${done ? '#00E5FF' : active ? 'rgba(0,229,255,0.6)' : 'rgba(255,255,255,0.1)'}`,
@@ -979,7 +979,7 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
                       : <span style={{ fontSize: 13, fontWeight: 700, color: active ? '#00E5FF' : '#374151' }}>{s.num}</span>
                     }
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: active ? '#00E5FF' : done ? '#64748b' : '#374151', letterSpacing: '0.05em' }}>{s.label.toUpperCase()}</span>
+                  <span className="step-label" style={{ fontSize: 11, fontWeight: 600, color: active ? '#00E5FF' : done ? '#64748b' : '#374151', letterSpacing: '0.05em' }}>{s.label.toUpperCase()}</span>
                 </div>
               </div>
             );
@@ -991,12 +991,13 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
         ══════════════════════════════════ */}
         {step === 1 && (
           <div style={stepAnim}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 28 }}>
+            <div className="mood-grid" style={{ marginBottom: 28 }}>
               {MOODS.map(m => {
                 const isSel = selectedMood === m.id;
                 const isHov = hoveredMood === m.id;
                 return (
                   <button key={m.id} type="button"
+                    className="mood-card"
                     onClick={() => setSelectedMood(m.id)}
                     onMouseEnter={() => setHoveredMood(m.id)}
                     onMouseLeave={() => setHoveredMood('')}
@@ -1013,12 +1014,13 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
                       cursor        : 'pointer',
                       transition    : 'all .22s cubic-bezier(.4,0,.2,1)',
                       transform     : isSel ? 'scale(1.07) translateY(-4px)' : isHov ? 'scale(1.03) translateY(-2px)' : 'scale(1)',
+                      width         : '100%',
                     }}
                   >
-                    <span style={{ fontSize: 36, lineHeight: 1, filter: isSel ? `drop-shadow(0 0 8px ${m.glow})` : 'none', transition: 'filter .2s' }}>
+                    <span className="mood-emoji" style={{ fontSize: 36, lineHeight: 1, filter: isSel ? `drop-shadow(0 0 8px ${m.glow})` : 'none', transition: 'filter .2s' }}>
                       {m.emoji}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: isSel ? m.text : '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'center', transition: 'color .2s' }}>
+                    <span className="mood-label" style={{ fontSize: 11, fontWeight: 700, color: isSel ? m.text : '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'center', transition: 'color .2s' }}>
                       {m.label}
                     </span>
                     {isSel && (
