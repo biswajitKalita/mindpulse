@@ -1,0 +1,18 @@
+{
+  "classes": [
+    "anger",
+    "anxiety",
+    "calm",
+    "joy",
+    "sadness"
+  ],
+  "n_mels": 64,
+  "hop": 512,
+  "n_fft": 2048,
+  "sr": 22050,
+  "duration": 4,
+  "fixed_len": 173,
+  "x_mean": -61.021888732910156,
+  "x_std": 19.873811721801758,
+  "version": "v4_cnn"
+}
