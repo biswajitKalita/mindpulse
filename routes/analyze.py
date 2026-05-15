@@ -87,3 +87,67 @@ async def health():
         "voice_model":    voice_label,
         "ml_enabled":     ML_ENABLED,
     }
+
+
+# ─── Voice Debug (temporary diagnosis endpoint) ──────────────────────────────
+
+def _pkg_version(name: str) -> str:
+    try:
+        import importlib.metadata
+        return importlib.metadata.version(name)
+    except Exception:
+        return "NOT INSTALLED"
+
+
+@router.get("/voice-debug")
+async def voice_debug():
+    """Returns exact paths, file existence, and load errors — for diagnosis."""
+    import os, sys
+    from models import voice_analyzer as va
+
+    sk_error = "already loaded OK"
+    if not va.SKLEARN_ENABLED:
+        try:
+            import joblib
+            joblib.load(va.FALLBACK_MODEL)
+            sk_error = "retry OK"
+        except Exception as e:
+            sk_error = str(e)
+
+    onnx_error = "already loaded OK"
+    if not va.ONNX_ENABLED:
+        try:
+            import onnxruntime as ort
+            ort.InferenceSession(va.MODEL_ONNX, providers=["CPUExecutionProvider"])
+            onnx_error = "retry OK"
+        except Exception as e:
+            onnx_error = str(e)
+
+    return {
+        "cwd":    os.getcwd(),
+        "python": sys.version,
+        "_BASE":  va._BASE,
+        "_MODELS": va._MODELS,
+        "files": {
+            "voice_emotion_model.pkl": os.path.exists(va.FALLBACK_MODEL),
+            "voice_scaler.pkl":        os.path.exists(va.FALLBACK_SCALER),
+            "voice_cnn_model.onnx":    os.path.exists(va.MODEL_ONNX),
+            "voice_cnn_meta.json":     os.path.exists(va.MODEL_META_JSON),
+        },
+        "flags": {
+            "CNN_ENABLED":     va.CNN_ENABLED,
+            "ONNX_ENABLED":    va.ONNX_ENABLED,
+            "SKLEARN_ENABLED": va.SKLEARN_ENABLED,
+        },
+        "errors": {
+            "onnx":   onnx_error,
+            "sklearn": sk_error,
+        },
+        "packages": {
+            "onnxruntime": _pkg_version("onnxruntime"),
+            "scipy":       _pkg_version("scipy"),
+            "soundfile":   _pkg_version("soundfile"),
+            "joblib":      _pkg_version("joblib"),
+            "scikit-learn": _pkg_version("scikit-learn"),
+        },
+    }
