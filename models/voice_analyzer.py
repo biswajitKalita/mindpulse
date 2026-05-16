@@ -15,7 +15,7 @@ import numpy as np
 warnings.filterwarnings("ignore")
 
 # -- Deployment version (used in health endpoint to confirm new code is live) -
-VOICE_MODEL_VERSION = "v5.4-ir7"
+VOICE_MODEL_VERSION = "v5.5-sklearn172"
 
 # -- Model paths --------------------------------------------------------------
 _BASE           = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
