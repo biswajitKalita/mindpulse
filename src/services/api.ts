@@ -236,9 +236,15 @@ export async function apiVerifyOtp(phone: string, otp: string, name?: string): P
 export async function apiGetCurrentUser(): Promise<ApiUser | null> {
   if (USE_MOCK) return mockGetCurrentUser();
   const token = getToken();
-  if (!token) return mockGetCurrentUser();  // check localStorage session
-  // Mock tokens (from offline signup) — don't hit backend
-  if (token.startsWith('mock_')) return mockGetCurrentUser();
+  // No token = not logged in
+  if (!token) return null;
+  // Old mock_ tokens are phantom accounts (localStorage-only) — clear them and force real login
+  if (token.startsWith('mock_')) {
+    clearToken();
+    localStorage.removeItem('mindpulse_session');
+    localStorage.removeItem('mindpulse_users');
+    return null;
+  }
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQ_TIMEOUT);
@@ -249,12 +255,11 @@ export async function apiGetCurrentUser(): Promise<ApiUser | null> {
     clearTimeout(timer);
     if (!res.ok) {
       clearToken();
-      // Try localStorage session as fallback
-      return mockGetCurrentUser();
+      return null;  // Token expired or invalid — not logged in
     }
     return res.json() as Promise<ApiUser>;
   } catch {
-    return mockGetCurrentUser();  // offline / timeout → restore from localStorage
+    return null;  // Network error — treat as logged out
   }
 }
 
@@ -359,9 +364,8 @@ export async function apiGetCheckIns(): Promise<ApiCheckInEntry[]> {
   try {
     return await request<ApiCheckInEntry[]>('/checkins');
   } catch (err: any) {
-    // 401 / timeout / network error → return localStorage entries so Dashboard shows data
-    console.warn('[MindPulse] GET /checkins failed, using local entries');
-    return mockGetCheckIns();
+    console.warn('[MindPulse] GET /checkins failed:', err?.message);
+    return [];  // Return empty — don't restore stale localStorage data
   }
 }
 
