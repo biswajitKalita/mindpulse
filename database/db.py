@@ -156,14 +156,18 @@ def create_user(name: str, email: str, password: str) -> Optional[Dict]:
         try:
             doc = _mongo_users.find_one({"email": email})
             if doc:
-                return None  # duplicate email
-            _mongo_users.insert_one({
-                "_id": user_id, "id": user_id, "name": name, "email": email,
-                "pass_hash": pass_hash, "pass_salt": salt,
-                "joined_at": joined, "phone": None,
-            })
-            return {"id": user_id, "name": name, "email": email,
-                    "avatarInitials": av, "joinedDate": joined}
+                print(f"[OK] create_user → MongoDB insert for {email}")
+            else:
+                _mongo_users.insert_one({
+                    "_id": user_id, "id": user_id, "name": name, "email": email,
+                    "pass_hash": pass_hash, "pass_salt": salt,
+                    "joined_at": joined, "phone": None,
+                })
+                print(f"[OK] create_user → saved to MongoDB for {email}")
+                return {"id": user_id, "name": name, "email": email,
+                        "avatarInitials": av, "joinedDate": joined}
+            # duplicate email in Mongo
+            return None
         except Exception as e:
             print(f"[Mongo create_user error] {e} — falling back to SQLite")
 
@@ -191,9 +195,13 @@ def get_user_by_email(email: str) -> Optional[Dict]:
     if MONGO_ENABLED:
         try:
             doc = _mongo_users.find_one({"email": email})
-            return dict(doc) if doc else None
+            if doc:
+                return dict(doc)  # found in MongoDB — return immediately
+            # Not found in MongoDB → fall through and also check SQLite
+            # (covers accounts created via SQLite fallback during a MongoDB error)
         except Exception as e:
             print(f"[Mongo get_user_by_email error] {e}")
+    # SQLite fallback (also reached if MongoDB returned None)
     conn = get_connection()
     row = conn.execute(
         "SELECT * FROM users WHERE LOWER(email)=LOWER(?)", (email,)
