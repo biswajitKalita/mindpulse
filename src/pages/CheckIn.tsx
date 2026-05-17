@@ -1495,14 +1495,7 @@ export default function CheckIn({ onNavigate }: CheckInProps) {
               )}
             </div>
 
-            {/* AI Insight */}
-            <div className="glass" style={{ borderRadius: 20, padding: '20px 24px', width: '100%', maxWidth: 480, marginBottom: 18 }}>
-              <div style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 12 }}>
-                <Sparkles size={14} color="#00E5FF" />
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color:'#374151', textTransform:'uppercase' }}>AI Insight</span>
-              </div>
-              <p style={{ fontSize: 13.5, color:'#94a3b8', lineHeight: 1.7, margin: 0 }}>{r.insights}</p>
-            </div>
+
 
             {/* Crisis Alert */}
             {r.crisis_flag && (
