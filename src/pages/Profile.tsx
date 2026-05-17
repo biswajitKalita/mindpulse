@@ -360,25 +360,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
               </div>
             )}
 
-            {/* About */}
-            <div className="glass" style={{ borderRadius: 24, padding: 24, marginBottom: 16 }}>
-              <SectionHeader icon={Info} title="About MindPulse" color="#00E5FF" />
-              <div style={{ marginTop: 12 }}>
-                {[
-                  { label: 'Version',    value: '2.0.0 · Beta' },
-                  { label: 'ML Engine',  value: 'Scikit-Learn + VADER Sentiment' },
-                  { label: 'Models',     value: 'Tri-Model Ensemble (text, emotion, crisis)' },
-                  { label: 'Frontend',   value: 'React + TypeScript + Vite' },
-                  { label: 'Backend',    value: 'FastAPI + Uvicorn' },
-                  { label: 'Team',       value: 'Biswajit, Rishi, Ashik, Saidur, Mumon, Jeuti' },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', gap: 12 }}>
-                    <span style={{ fontSize: 12, color: '#8B949E', flexShrink: 0 }}>{label}</span>
-                    <span style={{ fontSize: 12, color: '#FFFFFF', fontWeight: 500, textAlign: 'right' }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+
           </>
         )}
 
