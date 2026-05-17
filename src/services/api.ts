@@ -24,7 +24,7 @@ const _BASE = (_validUrl ? _rawUrl : (import.meta.env.DEV ? 'http://localhost:80
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
 const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
-const REQ_TIMEOUT = import.meta.env.DEV ? 15000 : 8000;
+const REQ_TIMEOUT = import.meta.env.DEV ? 15000 : 30000;   // 30s prod (Render cold start ~50s wake but health ping fires first)
 
 // ── Wake up Render on production page load ──
 if (!import.meta.env.DEV) {
