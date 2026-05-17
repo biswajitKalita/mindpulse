@@ -151,3 +151,52 @@ async def voice_debug():
             "scikit-learn": _pkg_version("scikit-learn"),
         },
     }
+
+
+# ─── MongoDB Write Test ───────────────────────────────────────────────────────
+
+@router.get("/db-test")
+async def db_test():
+    """Tests MongoDB read + write. Tells us exactly why accounts aren't saving."""
+    from database.db import MONGO_ENABLED, _mongo_users
+    import uuid
+    from datetime import datetime
+
+    result = {
+        "mongo_enabled": MONGO_ENABLED,
+        "write_test": None,
+        "read_test": None,
+        "delete_test": None,
+        "user_count": None,
+        "error": None,
+    }
+
+    if not MONGO_ENABLED:
+        result["error"] = "MONGO_ENABLED is False — check MONGO_URI env var on Render"
+        return result
+
+    test_id = f"_test_{uuid.uuid4().hex[:8]}"
+    try:
+        # 1. Write test
+        _mongo_users.insert_one({
+            "_id": test_id, "id": test_id, "name": "TEST",
+            "email": f"{test_id}@test.com", "joined_at": datetime.utcnow().isoformat(),
+        })
+        result["write_test"] = "OK"
+
+        # 2. Read test
+        doc = _mongo_users.find_one({"_id": test_id})
+        result["read_test"] = "OK" if doc else "FAILED — document not found after insert"
+
+        # 3. Count real users
+        result["user_count"] = _mongo_users.count_documents({"name": {"$ne": "TEST"}})
+
+        # 4. Cleanup
+        _mongo_users.delete_one({"_id": test_id})
+        result["delete_test"] = "OK"
+
+    except Exception as e:
+        result["error"] = str(e)
+        result["write_test"] = "FAILED"
+
+    return result
