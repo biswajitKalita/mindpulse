@@ -9,19 +9,34 @@ from typing import List, Optional, Dict
 from config.settings import MONGO_URI, DB_NAME
 
 # ── MongoDB (persistent — primary on Render) ────────────────────────────
-_mongo_users = None
+_mongo_users    = None
+_mongo_checkins = None
+_mongo_otp      = None
+
 try:
     if MONGO_URI:
         from pymongo import MongoClient
         _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         _db = _client[DB_NAME]
+
+        # Users collection
         _mongo_users = _db["users"]
         _mongo_users.create_index("email", unique=True, sparse=True)
         _mongo_users.create_index("phone", unique=True, sparse=True)
-        print(f"[OK] MongoDB connected → {DB_NAME}.users")
+
+        # Check-ins collection
+        _mongo_checkins = _db["checkins"]
+        _mongo_checkins.create_index("user_id")
+        _mongo_checkins.create_index("created_at")
+
+        # OTP store collection
+        _mongo_otp = _db["otp_store"]
+        _mongo_otp.create_index("phone", unique=True)
+
+        print(f"[OK] MongoDB connected → {DB_NAME} (users + checkins + otp_store)")
 except Exception as e:
     print(f"[WARN] MongoDB not available: {e} — using SQLite fallback")
-    _mongo_users = None
+    _mongo_users = _mongo_checkins = _mongo_otp = None
 
 MONGO_ENABLED = _mongo_users is not None
 
@@ -234,6 +249,19 @@ def store_otp(phone: str, otp: str, ttl_seconds: int = 300):
     from datetime import datetime, timedelta
     otp_hash = hashlib.sha256(otp.encode()).hexdigest()
     expires  = (datetime.utcnow() + timedelta(seconds=ttl_seconds)).isoformat()
+
+    if MONGO_ENABLED and _mongo_otp is not None:
+        try:
+            _mongo_otp.replace_one(
+                {"phone": phone},
+                {"phone": phone, "otp_hash": otp_hash, "expires_at": expires, "attempts": 0},
+                upsert=True,
+            )
+            return
+        except Exception as e:
+            print(f"[Mongo store_otp error] {e}")
+
+    # SQLite fallback
     conn = get_connection()
     conn.execute(
         "INSERT OR REPLACE INTO otp_store (phone, otp_hash, expires_at, attempts) VALUES (?,?,?,0)",
@@ -250,6 +278,26 @@ def pop_otp_if_valid(phone: str, otp: str) -> bool:
     """
     from datetime import datetime
     otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+
+    if MONGO_ENABLED and _mongo_otp is not None:
+        try:
+            doc = _mongo_otp.find_one({"phone": phone})
+            if not doc:
+                return False
+            if datetime.utcnow().isoformat() > doc["expires_at"]:
+                _mongo_otp.delete_one({"phone": phone})
+                return False
+            if doc.get("attempts", 0) >= 5:
+                return False
+            if not hmac.compare_digest(otp_hash, doc["otp_hash"]):
+                _mongo_otp.update_one({"phone": phone}, {"$inc": {"attempts": 1}})
+                return False
+            _mongo_otp.delete_one({"phone": phone})
+            return True
+        except Exception as e:
+            print(f"[Mongo pop_otp error] {e}")
+
+    # SQLite fallback
     conn = get_connection()
     row = conn.execute(
         "SELECT otp_hash, expires_at, attempts FROM otp_store WHERE phone=?", (phone,)
@@ -276,6 +324,23 @@ def pop_otp_if_valid(phone: str, otp: str) -> bool:
 
 def get_user_by_phone(phone: str) -> Optional[Dict]:
     """Return user by phone number."""
+    if MONGO_ENABLED:
+        try:
+            doc = _mongo_users.find_one({"phone": phone})
+            if doc:
+                return {
+                    "id":             doc["id"],
+                    "name":           doc["name"],
+                    "email":          doc.get("email") or "",
+                    "phone":          doc.get("phone") or "",
+                    "avatarInitials": "".join(p[0].upper() for p in doc["name"].split()[:2]),
+                    "joinedDate":     doc["joined_at"],
+                }
+            return None
+        except Exception as e:
+            print(f"[Mongo get_user_by_phone error] {e}")
+
+    # SQLite fallback
     conn = get_connection()
     row = conn.execute(
         "SELECT id, name, email, phone, joined_at FROM users WHERE phone=?", (phone,)
@@ -296,16 +361,40 @@ def get_user_by_phone(phone: str) -> Optional[Dict]:
 
 def upsert_phone_user(phone: str, name: str = "MindPulse User") -> Dict:
     """
-    Find or create a user by phone number (Firebase phone auth).
-    Called after Firebase verifies the OTP — no password needed.
+    Find or create a user by phone number.
+    Called after OTP verification — no password needed.
     """
-    conn = get_connection()
-    row = conn.execute(
-        "SELECT * FROM users WHERE phone=?", (phone,)
-    ).fetchone()
+    if MONGO_ENABLED:
+        try:
+            doc = _mongo_users.find_one({"phone": phone})
+            if doc:
+                return {
+                    "id":             doc["id"],
+                    "name":           doc["name"],
+                    "email":          doc.get("email") or "",
+                    "phone":          doc.get("phone") or "",
+                    "avatarInitials": "".join(p[0].upper() for p in doc["name"].split()[:2]),
+                    "joinedDate":     doc["joined_at"],
+                }
+            user_id = str(uuid.uuid4())
+            joined  = datetime.utcnow().isoformat()
+            _mongo_users.insert_one({
+                "_id": user_id, "id": user_id, "name": name,
+                "email": None, "phone": phone,
+                "pass_hash": None, "pass_salt": None, "joined_at": joined,
+            })
+            return {
+                "id": user_id, "name": name, "email": "", "phone": phone,
+                "avatarInitials": "".join(p[0].upper() for p in name.split()[:2]),
+                "joinedDate": joined,
+            }
+        except Exception as e:
+            print(f"[Mongo upsert_phone_user error] {e}")
 
+    # SQLite fallback
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM users WHERE phone=?", (phone,)).fetchone()
     if row:
-        # Existing user — just return
         conn.close()
         r = dict(row)
         return {
@@ -316,10 +405,8 @@ def upsert_phone_user(phone: str, name: str = "MindPulse User") -> Dict:
             "avatarInitials": "".join(p[0].upper() for p in r["name"].split()[:2]),
             "joinedDate":     r["joined_at"],
         }
-
-    # New user — create without email/password
-    user_id  = str(uuid.uuid4())
-    joined   = datetime.utcnow().isoformat()
+    user_id = str(uuid.uuid4())
+    joined  = datetime.utcnow().isoformat()
     conn.execute(
         "INSERT INTO users (id, name, email, pass_hash, pass_salt, joined_at, phone) VALUES (?,?,?,?,?,?,?)",
         (user_id, name, None, None, None, joined, phone)
@@ -327,35 +414,55 @@ def upsert_phone_user(phone: str, name: str = "MindPulse User") -> Dict:
     conn.commit()
     conn.close()
     return {
-        "id":             user_id,
-        "name":           name,
-        "email":          "",
-        "phone":          phone,
+        "id": user_id, "name": name, "email": "", "phone": phone,
         "avatarInitials": "".join(p[0].upper() for p in name.split()[:2]),
-        "joinedDate":     joined,
+        "joinedDate": joined,
     }
 
 
 def save_checkin(user_id: str, payload: dict, result: dict) -> str:
     """Persist a check-in + analysis result. Returns the new record ID."""
-    import uuid
-    entry_id = str(uuid.uuid4())
+    entry_id   = str(uuid.uuid4())
+    created_at = datetime.utcnow().isoformat()
+
+    if MONGO_ENABLED and _mongo_checkins is not None:
+        try:
+            _mongo_checkins.insert_one({
+                "id":           entry_id,
+                "user_id":      user_id,
+                "created_at":   created_at,
+                "mood":         payload.get("mood", ""),
+                "stress":       payload.get("stress", 0),
+                "sleep":        payload.get("sleep", 0),
+                "energy":       payload.get("energy", 0),
+                "tags":         payload.get("tags", []),
+                "journal":      payload.get("text", ""),
+                "voice_used":   bool(payload.get("voice_used", False)),
+                "score":        result.get("score", 0),
+                "risk_level":   result.get("risk_level", ""),
+                "emotions":     result.get("emotions", {}),
+                "dominant":     result.get("dominant_emotion", ""),
+                "insights":     result.get("insights", ""),
+                "suggestions":  result.get("suggestions", []),
+                "crisis_flag":  bool(result.get("crisis_flag", False)),
+                "word_count":   result.get("word_count", 0),
+            })
+            return entry_id
+        except Exception as e:
+            print(f"[Mongo save_checkin error] {e} — falling back to SQLite")
+
+    # SQLite fallback
     conn = get_connection()
     conn.execute("""
         INSERT INTO checkins VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
-        entry_id,
-        user_id,
-        datetime.utcnow().isoformat(),
+        entry_id, user_id, created_at,
         payload.get("mood", ""),
-        payload.get("stress", 0),
-        payload.get("sleep", 0),
-        payload.get("energy", 0),
+        payload.get("stress", 0), payload.get("sleep", 0), payload.get("energy", 0),
         json.dumps(payload.get("tags", [])),
         payload.get("text", ""),
         int(payload.get("voice_used", False)),
-        result.get("score", 0),
-        result.get("risk_level", ""),
+        result.get("score", 0), result.get("risk_level", ""),
         json.dumps(result.get("emotions", {})),
         result.get("dominant_emotion", ""),
         result.get("insights", ""),
@@ -370,6 +477,24 @@ def save_checkin(user_id: str, payload: dict, result: dict) -> str:
 
 def get_history(user_id: str, limit: int = 30) -> List[dict]:
     """Fetch recent check-ins for a user, newest first."""
+    if MONGO_ENABLED and _mongo_checkins is not None:
+        try:
+            docs = list(_mongo_checkins.find(
+                {"user_id": user_id},
+                sort=[("created_at", -1)],
+                limit=limit,
+            ))
+            for doc in docs:
+                doc.pop("_id", None)   # remove Mongo internal id
+                # Ensure list/dict types (already stored correctly in Mongo)
+                doc.setdefault("tags", [])
+                doc.setdefault("emotions", {})
+                doc.setdefault("suggestions", [])
+            return docs
+        except Exception as e:
+            print(f"[Mongo get_history error] {e}")
+
+    # SQLite fallback
     conn = get_connection()
     rows = conn.execute(
         "SELECT * FROM checkins WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
@@ -387,6 +512,20 @@ def get_history(user_id: str, limit: int = 30) -> List[dict]:
 
 
 def get_checkin_by_id(entry_id: str) -> Optional[dict]:
+    if MONGO_ENABLED and _mongo_checkins is not None:
+        try:
+            doc = _mongo_checkins.find_one({"id": entry_id})
+            if doc:
+                doc.pop("_id", None)
+                doc.setdefault("tags", [])
+                doc.setdefault("emotions", {})
+                doc.setdefault("suggestions", [])
+                return doc
+            return None
+        except Exception as e:
+            print(f"[Mongo get_checkin_by_id error] {e}")
+
+    # SQLite fallback
     conn = get_connection()
     row = conn.execute("SELECT * FROM checkins WHERE id=?", (entry_id,)).fetchone()
     conn.close()
