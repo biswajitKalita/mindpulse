@@ -153,14 +153,15 @@ export async function apiSignup(name: string, email: string, password: string): 
     const body = await res.json().catch(() => null);
     if (res.status === 409) return { success: false, error: body?.detail ?? 'An account with this email already exists.' };
     if (!res.ok) {
-      // 5xx = backend crashed → use localStorage mock so user can still sign up
-      console.warn('[MindPulse] Backend signup failed, using local fallback');
-      return mockSignup(name, email, password);
+      const msg = body?.detail ?? body?.error ?? `Server error (${res.status}). Please try again.`;
+      return { success: false, error: msg };
     }
     if (body?.token) setToken(body.token);
     return { success: true, user: body?.user, token: body?.token };
-  } catch {
-    return mockSignup(name, email, password);  // network error / timeout
+  } catch (err: any) {
+    if (err?.name === 'AbortError')
+      return { success: false, error: 'Request timed out. The server may be waking up — please wait 30 seconds and try again.' };
+    return { success: false, error: 'Could not reach the server. Check your connection and try again.' };
   }
 }
 
@@ -177,21 +178,18 @@ export async function apiLogin(email: string, password: string): Promise<AuthRes
     });
     clearTimeout(timer);
     const body = await res.json().catch(() => null);
-    if (res.status === 401) {
-      // Wrong password on real backend → also try localStorage mock (covers Render DB wipe)
-      const mockRes = await mockLogin(email, password);
-      if (mockRes.success) return mockRes;
+    if (res.status === 401)
       return { success: false, error: body?.detail ?? 'Incorrect email or password.' };
-    }
     if (!res.ok) {
-      // 5xx = backend crashed → try localStorage mock
-      console.warn('[MindPulse] Backend login failed, trying local fallback');
-      return mockLogin(email, password);
+      const msg = body?.detail ?? body?.error ?? `Server error (${res.status}). Please try again.`;
+      return { success: false, error: msg };
     }
     if (body?.token) setToken(body.token);
     return { success: true, user: body?.user, token: body?.token };
-  } catch {
-    return mockLogin(email, password);  // network error / timeout
+  } catch (err: any) {
+    if (err?.name === 'AbortError')
+      return { success: false, error: 'Request timed out. The server may be waking up — please wait 30 seconds and try again.' };
+    return { success: false, error: 'Could not reach the server. Check your connection and try again.' };
   }
 }
 
