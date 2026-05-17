@@ -1,4 +1,4 @@
-import { Brain, Shield, TrendingUp, Heart, Code2, Database, Cpu, Users, BookOpen, GraduationCap } from 'lucide-react';
+import { Brain, Shield, TrendingUp, Heart, Code2, Database, Cpu, Users, BookOpen } from 'lucide-react';
 
 interface AboutProps { onNavigate: (page: string) => void; }
 
@@ -20,10 +20,11 @@ export default function About({ onNavigate }: AboutProps) {
   ];
 
   const techStack = [
-    { cat: 'Frontend',  items: ['React 18', 'TypeScript', 'Vite', 'TailwindCSS', 'Recharts'], icon: Code2,    color: '#00E5FF' },
-    { cat: 'Backend',   items: ['Python 3.11', 'Flask / FastAPI', 'REST APIs', 'JWT Auth'], icon: Cpu,      color: '#f472b6' },
-    { cat: 'AI / ML',   items: ['TensorFlow', 'scikit-learn', 'NLTK', 'Hugging Face BERT', 'NumPy'], icon: Brain,    color: '#fbbf24' },
-    { cat: 'Database',  items: ['MongoDB Atlas', 'Firebase Firestore', 'Local Storage'], icon: Database, color: '#7C3AED' },
+    { cat: 'Frontend',   items: ['React 18', 'TypeScript', 'Vite', 'Vanilla CSS', 'Recharts', 'Lucide Icons'], icon: Code2,    color: '#00E5FF' },
+    { cat: 'Backend',    items: ['Python 3.10', 'FastAPI', 'Uvicorn', 'JWT Auth', 'PBKDF2 Hashing'], icon: Cpu,      color: '#f472b6' },
+    { cat: 'AI / ML',   items: ['scikit-learn 1.7', 'ONNX Runtime', 'CNN-BiLSTM Voice Model', 'Tri-Model Ensemble NLP', 'librosa', 'NumPy'], icon: Brain,    color: '#fbbf24' },
+    { cat: 'Database',   items: ['MongoDB Atlas', 'PyMongo', 'SQLite (local dev)'], icon: Database, color: '#7C3AED' },
+    { cat: 'Deployment', items: ['Render (backend)', 'Vercel (frontend)', 'GitHub CI/CD', 'ONNX IR v7'], icon: Users,    color: '#34d399' },
   ];
 
   return (
@@ -32,13 +33,9 @@ export default function About({ onNavigate }: AboutProps) {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 99, background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.2)', marginBottom: 18 }}>
-            <GraduationCap size={14} style={{ color: '#00E5FF' }} />
-            <span style={{ color: '#00E5FF', fontSize: 12, fontWeight: 600 }}>Academic Project · 2024</span>
-          </div>
           <h1 style={{ fontFamily: 'Sora,sans-serif', fontSize: 'clamp(2rem,5vw,3.2rem)', fontWeight: 800, color: '#FFFFFF', marginBottom: 14, letterSpacing: '-0.02em' }}>About MindPulse</h1>
           <p style={{ color: '#8B949E', maxWidth: 560, margin: '0 auto', fontSize: 15, lineHeight: 1.7 }}>
-            An AI-Based Early Warning & Intervention System for Mental Health Crisis — built to detect emotional distress before it becomes a crisis.
+            An AI-Based Early Warning &amp; Intervention System for Mental Health Crisis — built to detect emotional distress before it becomes a crisis.
           </p>
         </div>
 
@@ -167,11 +164,6 @@ export default function About({ onNavigate }: AboutProps) {
           </div>
         </div>
 
-        {/* Version info */}
-        <div style={{ textAlign: 'center', padding: '24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <p style={{ fontSize: 12, color: '#3d444d' }}>MindPulse v1.0 · React + TypeScript + AI/ML · 2024</p>
-          <p style={{ fontSize: 11, color: '#3d444d', marginTop: 4 }}>Built with ❤️ by Biswajit, Rishi, Ashik, Saidur, Mumon & Jeuti</p>
-        </div>
 
       </div>
     </div>
