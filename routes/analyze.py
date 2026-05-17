@@ -157,7 +157,7 @@ async def voice_debug():
 
 @router.get("/db-test")
 async def db_test():
-    """Tests MongoDB read + write. Tells us exactly why accounts aren't saving."""
+    """Tests MongoDB read + write + shows registered emails for diagnosis."""
     from database.db import MONGO_ENABLED, _mongo_users
     import uuid
     from datetime import datetime
@@ -167,6 +167,7 @@ async def db_test():
         "write_test": None,
         "read_test": None,
         "delete_test": None,
+        "registered_emails": [],
         "user_count": None,
         "error": None,
     }
@@ -188,8 +189,16 @@ async def db_test():
         doc = _mongo_users.find_one({"_id": test_id})
         result["read_test"] = "OK" if doc else "FAILED — document not found after insert"
 
-        # 3. Count real users
-        result["user_count"] = _mongo_users.count_documents({"name": {"$ne": "TEST"}})
+        # 3. List all real registered emails
+        real_users = list(_mongo_users.find(
+            {"name": {"$ne": "TEST"}},
+            {"email": 1, "name": 1, "joined_at": 1, "_id": 0}
+        ))
+        result["registered_emails"] = [
+            {"email": u.get("email", ""), "name": u.get("name", ""), "joined": u.get("joined_at", "")}
+            for u in real_users
+        ]
+        result["user_count"] = len(real_users)
 
         # 4. Cleanup
         _mongo_users.delete_one({"_id": test_id})
@@ -200,3 +209,4 @@ async def db_test():
         result["write_test"] = "FAILED"
 
     return result
+
