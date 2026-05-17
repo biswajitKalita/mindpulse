@@ -7,24 +7,21 @@
 // PROD_URL is always the real Render backend — env vars can OVERRIDE only if they are valid
 const PROD_URL = 'https://mindpulse-tn0d.onrender.com';
 
-// Validate env var: only accept if it's a real backend URL, not a placeholder
-// Strip trailing /api if present (some .env files include it, we add /api ourselves)
-const _rawUrl  = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '')
+// ── API Base URL Resolution ──
+// In PRODUCTION (Vercel): always use the hardcoded Render URL — ignore .env
+// In DEVELOPMENT (localhost): use env var override if set, else localhost:8000
+const _rawEnvUrl = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '')
   .replace(/\/api\/?$/, '').replace(/\/$/, '');
-const _validUrl = _rawUrl && (
-  _rawUrl.includes('onrender.com') ||
-  _rawUrl.includes('localhost')    ||
-  _rawUrl.includes('127.0.0.1')   ||
-  _rawUrl.includes('ngrok.io')    ||
-  _rawUrl.includes('railway.app')
-);
-// If env var is empty, fake, or wrong → use the hardcoded real backend
-const _BASE = (_validUrl ? _rawUrl : (import.meta.env.DEV ? 'http://localhost:8000' : PROD_URL));
+
+const _BASE = import.meta.env.DEV
+  ? (_rawEnvUrl || 'http://localhost:8000')   // dev: env var → fallback localhost
+  : PROD_URL;                                  // prod: ALWAYS Render — never localhost
 
 const API_BASE  = `${_BASE}/api`;
 const AUTH_BASE = `${_BASE}/api`;
 const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
-const REQ_TIMEOUT = import.meta.env.DEV ? 15000 : 30000;   // 30s prod (Render cold start ~50s wake but health ping fires first)
+const REQ_TIMEOUT = import.meta.env.DEV ? 15000 : 30000;
+
 
 // ── Wake up Render on production page load ──
 if (!import.meta.env.DEV) {
